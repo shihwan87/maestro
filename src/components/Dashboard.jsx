@@ -1,17 +1,24 @@
 import { useState, useMemo } from 'react'
-import { COLORS, CATEGORIES, CATEGORY_LABEL } from '../styles/theme'
+import { COLORS } from '../styles/theme'
 import { useProjects } from '../hooks/useProjects'
+import { useCategories } from '../hooks/useCategories'
+import { useStepsByProject } from '../hooks/useStepsByProject'
 import { ProjectCard } from './ProjectCard'
 import { UrgentBanner } from './UrgentBanner'
 import { AddProjectModal } from './AddProjectModal'
 import { ProjectModal } from './ProjectModal'
+import { CategoryManager } from './CategoryManager'
 
 export function Dashboard() {
   const { projects, loading, error, addProject, updateProject, deleteProject, refresh } = useProjects()
+  const { categories, addCategory, updateCategory, deleteCategory, colorFor } = useCategories()
+  const { stepsByProject } = useStepsByProject()
+
   const [filter, setFilter] = useState('All')
-  const [opened, setOpened] = useState(null)         // project being viewed
-  const [editing, setEditing] = useState(null)       // project being edited (or 'new')
+  const [opened, setOpened] = useState(null)
+  const [editing, setEditing] = useState(null)
   const [addOpen, setAddOpen] = useState(false)
+  const [catMgrOpen, setCatMgrOpen] = useState(false)
 
   const visible = useMemo(
     () => filter === 'All' ? projects : projects.filter(p => p.category === filter),
@@ -37,55 +44,81 @@ export function Dashboard() {
     <div style={S.page}>
       <header style={S.header}>
         <div>
-          <h1 style={S.h1}>프로젝트 / Projects</h1>
-          <p style={S.sub}>{projects.length}개 / {projects.length} total</p>
+          <h1 style={S.h1}>Projects</h1>
+          <p style={S.sub}>{projects.length} total</p>
         </div>
-        <button style={S.addBtn} onClick={() => { setEditing('new'); setAddOpen(true) }}>
-          + 새 프로젝트 / New
-        </button>
+        <div style={S.headBtns}>
+          <button style={S.catBtn} onClick={() => setCatMgrOpen(true)}>Categories</button>
+          <button style={S.addBtn} onClick={() => { setEditing('new'); setAddOpen(true) }}>
+            + New Project
+          </button>
+        </div>
       </header>
 
-      <UrgentBanner projects={projects} onClick={(p) => setOpened(p)} />
+      <UrgentBanner projects={projects} stepsByProject={stepsByProject}
+        onClick={(p) => setOpened(p)} />
 
       <div style={S.filters}>
-        {['All', ...CATEGORIES].map(c => (
-          <button key={c} onClick={() => setFilter(c)}
-            style={{
-              ...S.filter,
-              background: filter === c ? (COLORS[c] || COLORS.border) + '22' : 'transparent',
-              borderColor: filter === c ? (COLORS[c] || COLORS.text) : COLORS.border,
-              color: filter === c ? (COLORS[c] || COLORS.text) : COLORS.muted,
-            }}>
-            {c === 'All' ? '전체 / All' : CATEGORY_LABEL[c]}
-          </button>
+        <FilterChip label="All" active={filter === 'All'} color={COLORS.text}
+          onClick={() => setFilter('All')} />
+        {categories.map(c => (
+          <FilterChip key={c.id} label={c.name} active={filter === c.name} color={c.color}
+            onClick={() => setFilter(c.name)} />
         ))}
       </div>
 
-      {loading && <p style={S.muted}>불러오는 중… / Loading…</p>}
+      {loading && <p style={S.muted}>Loading…</p>}
       {error && <p style={S.err}>{error.message}</p>}
 
       <div style={S.grid}>
         {visible.map(p => (
-          <ProjectCard key={p.id} project={p} onOpen={setOpened} />
+          <ProjectCard key={p.id} project={p}
+            steps={stepsByProject.get(p.id) || []}
+            accent={colorFor(p.category)}
+            onOpen={setOpened} />
         ))}
       </div>
 
       {!loading && visible.length === 0 && (
-        <p style={S.muted}>프로젝트가 없습니다. / No projects.</p>
+        <p style={S.muted}>No projects.</p>
       )}
 
-      <ProjectModal project={opened} onClose={() => setOpened(null)}
+      <ProjectModal project={opened}
+        accent={opened ? colorFor(opened.category) : null}
+        onClose={() => setOpened(null)}
         onEdit={() => { setEditing(opened); setAddOpen(true) }} />
 
       <AddProjectModal
         open={addOpen}
         initial={editing === 'new' ? null : editing}
+        categories={categories}
         onClose={() => { setAddOpen(false); setEditing(null) }}
         onSave={saveProject}
         onDelete={doDelete}
       />
+
+      <CategoryManager open={catMgrOpen} onClose={() => setCatMgrOpen(false)}
+        categories={categories}
+        onAdd={addCategory} onUpdate={updateCategory} onDelete={deleteCategory} />
     </div>
   )
+}
+
+function FilterChip({ label, active, color, onClick }) {
+  return (
+    <button onClick={onClick}
+      style={{
+        ...FS.chip,
+        background: active ? `${color}22` : 'transparent',
+        borderColor: active ? color : COLORS.border,
+        color: active ? color : COLORS.muted,
+      }}>{label}</button>
+  )
+}
+
+const FS = {
+  chip: { padding: '6px 12px', borderRadius: 999, border: '1px solid',
+    cursor: 'pointer', fontSize: 12, fontWeight: 600 },
 }
 
 const S = {
@@ -95,11 +128,12 @@ const S = {
     gap: 12, marginBottom: 20, flexWrap: 'wrap' },
   h1: { fontSize: 22, fontWeight: 700, margin: 0 },
   sub: { color: COLORS.muted, fontSize: 13, margin: '4px 0 0' },
-  addBtn: { background: COLORS['ICU/Clinical'], color: '#fff', border: 0, borderRadius: 10,
+  headBtns: { display: 'flex', gap: 8, flexWrap: 'wrap' },
+  catBtn: { background: 'transparent', color: COLORS.text, border: `1px solid ${COLORS.border}`,
+    borderRadius: 10, padding: '10px 14px', cursor: 'pointer', fontSize: 13 },
+  addBtn: { background: COLORS.primary, color: '#fff', border: 0, borderRadius: 10,
     padding: '10px 16px', cursor: 'pointer', fontSize: 14, fontWeight: 600 },
   filters: { display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 20 },
-  filter: { padding: '6px 12px', borderRadius: 999, border: '1px solid',
-    cursor: 'pointer', fontSize: 12, fontWeight: 600 },
   grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 14 },
   muted: { color: COLORS.muted, fontSize: 13 },
   err: { color: COLORS.danger, fontSize: 13 },

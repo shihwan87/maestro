@@ -49,5 +49,13 @@ export function useSteps(projectId) {
     if (error) throw error
   }
 
-  return { steps, loading, addStep, updateStep, deleteStep, refresh: fetchAll }
+  const reorderSteps = async (orderedIds) => {
+    const updates = orderedIds.map((id, idx) =>
+      supabase.from('steps').update({ sort_order: idx }).eq('id', id)
+    )
+    await Promise.all(updates)
+    await fetchAll()
+  }
+
+  return { steps, loading, addStep, updateStep, deleteStep, reorderSteps, refresh: fetchAll }
 }

@@ -1,10 +1,12 @@
 import { COLORS } from '../styles/theme'
-import { daysUntil } from '../lib/format'
+import { daysUntil, effectiveDeadline } from '../lib/format'
 
-export function UrgentBanner({ projects, onClick }) {
+export function UrgentBanner({ projects, stepsByProject, onClick }) {
   const urgent = projects.filter(p => {
-    const n = daysUntil(p.deadline)
-    return n !== null && n <= 7 && p.status !== 'Done'
+    if (p.status === 'Done') return false
+    const eff = effectiveDeadline(p, stepsByProject.get(p.id))
+    const n = daysUntil(eff?.date)
+    return n !== null && n <= 7
   })
   if (urgent.length === 0) return null
 
@@ -12,7 +14,7 @@ export function UrgentBanner({ projects, onClick }) {
     <div style={S.wrap}>
       <span style={S.icon}>⚠️</span>
       <span style={S.text}>
-        <strong>{urgent.length}</strong>개 마감 임박 / urgent project{urgent.length > 1 ? 's' : ''} (≤7d)
+        <strong>{urgent.length}</strong> urgent project{urgent.length > 1 ? 's' : ''} (≤7d)
       </span>
       <span style={S.titles}>
         {urgent.slice(0, 3).map(p => (

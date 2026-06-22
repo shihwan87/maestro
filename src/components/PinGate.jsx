@@ -27,14 +27,14 @@ export function PinGate({ children }) {
     <div style={S.wrap}>
       <form onSubmit={submit} style={S.box}>
         <h1 style={S.title}>Schemanager</h1>
-        <p style={S.sub}>PIN 입력 / Enter PIN</p>
+        <p style={S.sub}>Enter PIN</p>
         <input
           type="password" inputMode="numeric" autoFocus
           value={pin} onChange={e => { setPin(e.target.value); setError(false) }}
           style={{ ...S.input, borderColor: error ? COLORS.danger : COLORS.border }}
         />
-        {error && <p style={S.err}>잘못된 PIN / Wrong PIN</p>}
-        <button type="submit" style={S.btn}>잠금 해제 / Unlock</button>
+        {error && <p style={S.err}>Wrong PIN</p>}
+        <button type="submit" style={S.btn}>Unlock</button>
       </form>
     </div>
   )
@@ -49,5 +49,5 @@ const S = {
     background: COLORS.bg, color: COLORS.text, border: '1px solid', borderRadius: 10, outline: 'none' },
   err: { color: COLORS.danger, fontSize: 13, margin: '8px 0 0' },
   btn: { width: '100%', marginTop: 16, padding: '12px', fontSize: 14, fontWeight: 600,
-    background: COLORS['ICU/Clinical'], color: '#fff', border: 0, borderRadius: 10, cursor: 'pointer' },
+    background: COLORS.primary, color: '#fff', border: 0, borderRadius: 10, cursor: 'pointer' },
 }
