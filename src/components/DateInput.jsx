@@ -34,6 +34,12 @@ export function DateInput({ value, onChange, style }) {
         <input type="date"
           value={value || ''}
           onChange={e => { setText(e.target.value); onChange(e.target.value || '') }}
+          onClick={e => {
+            // Desktop (Windows Chrome/Edge) needs showPicker() to open on a
+            // click anywhere on the field; iOS opens on focus automatically.
+            const el = e.currentTarget
+            if (typeof el.showPicker === 'function') { try { el.showPicker() } catch {} }
+          }}
           style={S.dateOverlay}
           aria-label="Open calendar" />
       </span>

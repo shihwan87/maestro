@@ -22,23 +22,28 @@ export function effectiveDeadline(project, steps) {
   return null
 }
 
+// D-day color bands: red ≤7d (and overdue), amber ≤30d, green >30d, grey none.
 export function deadlineBadge(dateStr) {
   const n = daysUntil(dateStr)
   if (n === null) return { text: 'No deadline', color: COLORS.muted }
   if (n < 0) return { text: `D+${-n} overdue`, color: COLORS.danger }
   if (n === 0) return { text: 'D-day', color: COLORS.danger }
-  if (n <= 3) return { text: `D-${n}`, color: COLORS.danger }
-  if (n <= 7) return { text: `D-${n}`, color: COLORS.warn }
-  return { text: `D-${n}`, color: COLORS.muted }
+  if (n <= 7) return { text: `D-${n}`, color: COLORS.danger }
+  if (n <= 30) return { text: `D-${n}`, color: COLORS.warn }
+  return { text: `D-${n}`, color: COLORS.ok }
 }
 
+const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+
+// Display a date as 'YY/MM/DD (Dow), e.g. '26/06/26 (Fri).
+// Parse as local midnight to avoid UTC day-shift on YYYY-MM-DD strings.
 export function formatYYMMDD(dateStr) {
   if (!dateStr) return ''
-  const d = new Date(dateStr)
+  const d = new Date(`${dateStr}T00:00:00`)
   const yy = String(d.getFullYear()).slice(-2)
   const mm = String(d.getMonth() + 1).padStart(2, '0')
   const dd = String(d.getDate()).padStart(2, '0')
-  return `${yy}/${mm}/${dd}`
+  return `'${yy}/${mm}/${dd} (${DOW[d.getDay()]})`
 }
 
 export function progress(steps) {

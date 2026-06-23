@@ -22,10 +22,29 @@ export function StepCard({ step, project, accent, onUpdate, onDelete }) {
   const [notes, setNotes] = useState(step.notes || '')
   const [deadline, setDeadline] = useState(step.deadline || '')
   const [newSub, setNewSub] = useState('')
+  const [editingTitle, setEditingTitle] = useState(false)
+  const [titleDraft, setTitleDraft] = useState(step.title || '')
+  const [editingSub, setEditingSub] = useState(null)   // subtask id being renamed
+  const [subDraft, setSubDraft] = useState('')
   const { subtasks, addSubtask, updateSubtask, deleteSubtask, refresh } = useSubtasks(expanded ? step.id : null)
 
   useEffect(() => { setNotes(step.notes || '') }, [step.notes])
   useEffect(() => { setDeadline(step.deadline || '') }, [step.deadline])
+  useEffect(() => { setTitleDraft(step.title || '') }, [step.title])
+
+  const saveTitle = async () => {
+    const t = titleDraft.trim()
+    setEditingTitle(false)
+    if (t && t !== step.title) await onUpdate(step.id, { title: t })
+    else setTitleDraft(step.title || '')
+  }
+
+  const startEditSub = (st) => { setEditingSub(st.id); setSubDraft(st.text || '') }
+  const saveSub = async (st) => {
+    const t = subDraft.trim()
+    setEditingSub(null)
+    if (t && t !== st.text) { await updateSubtask(st.id, { text: t }); await refresh() }
+  }
 
   const cycleStatus = (e) => {
     e.stopPropagation()
@@ -58,7 +77,20 @@ export function StepCard({ step, project, accent, onUpdate, onDelete }) {
         <span {...attributes} {...listeners} style={S.handle} title="Drag to reorder">⋮⋮</span>
         <button onClick={cycleStatus} title={STATUS_LABEL[step.status]}
           style={{ ...S.dot, background: STATUS_COLOR[step.status] || COLORS.muted }} />
-        <span style={S.title} onClick={() => setExpanded(v => !v)}>{step.title}</span>
+        {editingTitle ? (
+          <input autoFocus value={titleDraft} onClick={e => e.stopPropagation()}
+            onChange={e => setTitleDraft(e.target.value)}
+            onBlur={saveTitle}
+            onKeyDown={e => {
+              if (e.key === 'Enter') { e.preventDefault(); saveTitle() }
+              if (e.key === 'Escape') { setTitleDraft(step.title || ''); setEditingTitle(false) }
+            }}
+            style={S.titleInput} />
+        ) : (
+          <span style={S.title} onClick={() => setExpanded(v => !v)}>{step.title}</span>
+        )}
+        <button onClick={e => { e.stopPropagation(); setEditingTitle(true) }}
+          style={S.editIcon} title="Rename step">✎</button>
         {step.deadline && (
           <span style={{ ...S.badge, color: badge.color, borderColor: `${badge.color}55` }}>
             {badge.text}
@@ -83,8 +115,20 @@ export function StepCard({ step, project, accent, onUpdate, onDelete }) {
             <div key={st.id} style={S.subRow}>
               <input type="checkbox" checked={!!st.done}
                 onChange={async () => { await updateSubtask(st.id, { done: !st.done }); await refresh() }} />
-              <span style={{ ...S.subText, textDecoration: st.done ? 'line-through' : 'none',
-                color: st.done ? COLORS.muted : COLORS.text }}>{st.text}</span>
+              {editingSub === st.id ? (
+                <input autoFocus value={subDraft}
+                  onChange={e => setSubDraft(e.target.value)}
+                  onBlur={() => saveSub(st)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') { e.preventDefault(); saveSub(st) }
+                    if (e.key === 'Escape') setEditingSub(null)
+                  }}
+                  style={S.subEdit} />
+              ) : (
+                <span onClick={() => startEditSub(st)} title="Tap to rename"
+                  style={{ ...S.subText, textDecoration: st.done ? 'line-through' : 'none',
+                    color: st.done ? COLORS.muted : COLORS.text }}>{st.text}</span>
+              )}
               <button onClick={async () => { await deleteSubtask(st.id); await refresh() }} style={S.subDel}>✕</button>
             </div>
           ))}
@@ -116,6 +160,11 @@ const S = {
   dot: { width: 18, height: 18, borderRadius: 99, border: 0, cursor: 'pointer', flexShrink: 0 },
   title: { flex: 1, color: COLORS.text, fontSize: 14, fontWeight: 500, cursor: 'pointer',
     minWidth: 100 },
+  titleInput: { flex: 1, minWidth: 100, background: COLORS.card, color: COLORS.text,
+    border: `1px solid ${COLORS.primary}`, borderRadius: 8, padding: '6px 10px',
+    fontSize: 14, fontWeight: 500, outline: 'none', fontFamily: 'inherit' },
+  editIcon: { background: 'transparent', color: COLORS.muted, border: 0, cursor: 'pointer',
+    fontSize: 13, padding: '0 2px', flexShrink: 0 },
   badge: { fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 999, border: '1px solid' },
   status: { fontSize: 11, fontWeight: 600 },
   chev: { color: COLORS.muted, fontSize: 12, background: 'transparent', border: 0,
@@ -131,7 +180,10 @@ const S = {
   subhead: { color: COLORS.muted, fontSize: 11, fontWeight: 600, textTransform: 'uppercase',
     letterSpacing: 0.5 },
   subRow: { display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0' },
-  subText: { flex: 1, fontSize: 13 },
+  subText: { flex: 1, fontSize: 13, cursor: 'pointer' },
+  subEdit: { flex: 1, background: COLORS.card, color: COLORS.text,
+    border: `1px solid ${COLORS.primary}`, borderRadius: 6, padding: '4px 8px',
+    fontSize: 13, outline: 'none', fontFamily: 'inherit' },
   subDel: { background: 'transparent', color: COLORS.muted, border: 0, cursor: 'pointer', fontSize: 12 },
   subAdd: { display: 'flex', gap: 6, marginTop: 4 },
   subInput: { flex: 1, background: COLORS.card, color: COLORS.text, border: `1px solid ${COLORS.border}`,
@@ -140,6 +192,6 @@ const S = {
     padding: '6px 10px', cursor: 'pointer', fontSize: 12 },
   notes: { background: COLORS.card, color: COLORS.text, border: `1px solid ${COLORS.border}`,
     borderRadius: 8, padding: 10, fontSize: 13, resize: 'vertical', outline: 'none', fontFamily: 'inherit' },
-  delStep: { alignSelf: 'flex-start', marginTop: 4, background: 'transparent', color: COLORS.danger,
-    border: 0, padding: '4px 0', cursor: 'pointer', fontSize: 12 },
+  delStep: { alignSelf: 'flex-start', marginTop: 8, background: COLORS.danger, color: '#fff',
+    border: 0, borderRadius: 8, padding: '8px 14px', cursor: 'pointer', fontSize: 13, fontWeight: 600 },
 }

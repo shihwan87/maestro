@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react'
 import { COLORS } from '../styles/theme'
+import { effectiveDeadline } from '../lib/format'
 import { useProjects } from '../hooks/useProjects'
 import { useCategories } from '../hooks/useCategories'
 import { useStepsByProject } from '../hooks/useStepsByProject'
@@ -20,10 +21,19 @@ export function Dashboard() {
   const [addOpen, setAddOpen] = useState(false)
   const [catMgrOpen, setCatMgrOpen] = useState(false)
 
-  const visible = useMemo(
-    () => filter === 'All' ? projects : projects.filter(p => p.category === filter),
-    [projects, filter]
-  )
+  // Filter by category, then sort by soonest effective deadline (urgent first).
+  // Projects with no deadline sink to the bottom.
+  const visible = useMemo(() => {
+    const list = filter === 'All' ? projects : projects.filter(p => p.category === filter)
+    return [...list].sort((a, b) => {
+      const da = effectiveDeadline(a, stepsByProject.get(a.id) || [])?.date || null
+      const db = effectiveDeadline(b, stepsByProject.get(b.id) || [])?.date || null
+      if (da && db) return da < db ? -1 : da > db ? 1 : 0
+      if (da) return -1
+      if (db) return 1
+      return 0
+    })
+  }, [projects, filter, stepsByProject])
 
   const saveProject = async (payload) => {
     if (editing && editing !== 'new') {
