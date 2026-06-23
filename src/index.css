@@ -1,6 +1,6 @@
 * { box-sizing: border-box; }
 html, body, #root { margin: 0; padding: 0; min-height: 100%; }
 body { background: #0a0a14; color: #e6e7ee; font-family: Inter, system-ui, sans-serif; }
-.safe-top { padding-top: calc(env(safe-area-inset-top, 0px) + 24px); }
+.safe-top { padding-top: 65px; }
 .safe-bottom { padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 60px); }
 input, select, button { font-family: inherit; }
