@@ -41,7 +41,8 @@ export function PinGate({ children }) {
 }
 
 const S = {
-  wrap: { minHeight: '100vh', background: COLORS.bg, display: 'grid', placeItems: 'center', padding: 16 },
+  wrap: { minHeight: '100vh', background: COLORS.bg, display: 'grid', placeItems: 'center',
+    paddingLeft: 16, paddingRight: 16 },
   box: { background: COLORS.card, borderRadius: 16, padding: 32, width: '100%', maxWidth: 320, textAlign: 'center' },
   title: { color: COLORS.text, fontSize: 24, fontWeight: 600, margin: 0, marginBottom: 8 },
   sub: { color: COLORS.muted, fontSize: 14, margin: 0, marginBottom: 20 },

@@ -124,7 +124,7 @@ const FS = {
 
 const S = {
   page: { minHeight: '100vh', background: COLORS.bg, color: COLORS.text,
-    padding: '0 20px', maxWidth: 1200, margin: '0 auto' },
+    paddingLeft: 20, paddingRight: 20, maxWidth: 1200, margin: '0 auto' },
   header: { display: 'flex', alignItems: 'center', justifyContent: 'space-between',
     gap: 12, marginBottom: 20, flexWrap: 'wrap' },
   h1: { fontSize: 22, fontWeight: 700, margin: 0 },
