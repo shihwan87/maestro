@@ -15,8 +15,8 @@ export default function App() {
     <PinGate>
       <TabBar active={tab} onChange={setTab} />
       <div style={{ paddingTop: 60 }}>
-        {tab === 'work'     && <Dashboard scope="work"     title="Work" />}
-        {tab === 'personal' && <Dashboard scope="personal" title="Personal" />}
+        {tab === 'work'     && <Dashboard scope="work"     title="Work"     itemNoun="Project" />}
+        {tab === 'personal' && <Dashboard scope="personal" title="Personal" itemNoun="Item" />}
         {tab === 'config'   && <ConfigTab />}
       </div>
     </PinGate>

@@ -10,7 +10,7 @@ import { AddProjectModal } from './AddProjectModal'
 import { ProjectModal } from './ProjectModal'
 import { CategoryManager } from './CategoryManager'
 
-export function Dashboard({ scope = 'work', title = 'Projects' }) {
+export function Dashboard({ scope = 'work', title = 'Projects', itemNoun = 'Project' }) {
   const { projects, loading, error, addProject, updateProject, deleteProject, refresh } = useProjects(scope)
   const { categories, addCategory, updateCategory, deleteCategory, reorderCategories, colorFor } = useCategories(scope)
   const { stepsByProject } = useStepsByProject()
@@ -60,7 +60,7 @@ export function Dashboard({ scope = 'work', title = 'Projects' }) {
         <div style={S.headBtns}>
           <button style={S.catBtn} onClick={() => setCatMgrOpen(true)}>Categories</button>
           <button style={S.addBtn} onClick={() => { setEditing('new'); setAddOpen(true) }}>
-            + New Project
+            + New {itemNoun}
           </button>
         </div>
       </header>
@@ -102,6 +102,7 @@ export function Dashboard({ scope = 'work', title = 'Projects' }) {
         open={addOpen}
         initial={editing === 'new' ? null : editing}
         categories={categories}
+        itemNoun={itemNoun}
         onClose={() => { setAddOpen(false); setEditing(null) }}
         onSave={saveProject}
         onDelete={doDelete}

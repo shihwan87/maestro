@@ -8,7 +8,7 @@ const PRIORITY_OPTS = [
   { value: 'low',  label: 'Low',  color: '#6b7280' },
 ]
 
-export function AddProjectModal({ open, initial, categories, onClose, onSave, onDelete }) {
+export function AddProjectModal({ open, initial, categories, itemNoun = 'Project', onClose, onSave, onDelete }) {
   const [title, setTitle] = useState('')
   const [category, setCategory] = useState('')
   const [deadline, setDeadline] = useState('')
@@ -44,11 +44,11 @@ export function AddProjectModal({ open, initial, categories, onClose, onSave, on
   return (
     <div style={S.overlay} onClick={onClose}>
       <form onClick={e => e.stopPropagation()} onSubmit={submit} style={S.modal}>
-        <h2 style={S.title}>{editing ? 'Edit Project' : 'New Project'}</h2>
+        <h2 style={S.title}>{editing ? `Edit ${itemNoun}` : `New ${itemNoun}`}</h2>
 
         <label style={S.label}>Title</label>
         <input style={S.input} value={title} onChange={e => setTitle(e.target.value)}
-          placeholder="Project title" autoFocus />
+          placeholder={`${itemNoun} title`} autoFocus />
 
         <label style={S.label}>Category</label>
         <div style={S.catRow}>
