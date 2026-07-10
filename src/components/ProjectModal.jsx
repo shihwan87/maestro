@@ -34,10 +34,11 @@ function splitAndSort(steps) {
   return { active, finished }
 }
 
-export function ProjectModal({ project, accent, onClose, onEdit }) {
+export function ProjectModal({ project, accent, onClose, onEdit, onDelete }) {
   const { steps, addStep, updateStep, deleteStep, reorderSteps, refresh } = useSteps(project?.id)
   const [newStep, setNewStep] = useState('')
   const [showFinished, setShowFinished] = useState(false)
+  const [confirmDel, setConfirmDel] = useState(false)
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -97,6 +98,16 @@ export function ProjectModal({ project, accent, onClose, onEdit }) {
           </div>
           <div style={S.headBtns}>
             <button onClick={onEdit} style={S.editBtn}>Edit</button>
+            {onDelete && !confirmDel && (
+              <button onClick={() => setConfirmDel(true)} style={S.delBtn}>Delete</button>
+            )}
+            {onDelete && confirmDel && (
+              <>
+                <button onClick={async () => { await onDelete(project.id); setConfirmDel(false) }}
+                  style={S.delConfirm}>Really delete?</button>
+                <button onClick={() => setConfirmDel(false)} style={S.editBtn}>Cancel</button>
+              </>
+            )}
             <button onClick={onClose} style={S.closeBtn}>✕</button>
           </div>
         </div>
@@ -107,8 +118,7 @@ export function ProjectModal({ project, accent, onClose, onEdit }) {
             <SortableContext items={activeSteps.map(s => s.id)} strategy={verticalListSortingStrategy}>
               <div style={S.stepList}>
                 {activeSteps.map(s => (
-                  <StepCard key={s.id} step={s} project={project} accent={accent}
-                    onUpdate={onUpdateStep} onDelete={onDeleteStep} />
+                  <StepCard key={s.id} step={s} onUpdate={onUpdateStep} onDelete={onDeleteStep} />
                 ))}
               </div>
             </SortableContext>
@@ -124,8 +134,7 @@ export function ProjectModal({ project, accent, onClose, onEdit }) {
               {showFinished && (
                 <div style={{ ...S.stepList, marginTop: 8 }}>
                   {finishedSteps.map(s => (
-                    <StepCard key={s.id} step={s} project={project} accent={accent}
-                      onUpdate={onUpdateStep} onDelete={onDeleteStep} />
+                    <StepCard key={s.id} step={s} onUpdate={onUpdateStep} onDelete={onDeleteStep} />
                   ))}
                 </div>
               )}
@@ -161,6 +170,10 @@ const S = {
   headBtns: { display: 'flex', gap: 6, flexShrink: 0 },
   editBtn: { background: 'transparent', color: COLORS.text, border: `1px solid ${COLORS.border}`,
     borderRadius: 8, padding: '6px 12px', cursor: 'pointer', fontSize: 13 },
+  delBtn: { background: 'transparent', color: COLORS.danger, border: `1px solid ${COLORS.danger}`,
+    borderRadius: 8, padding: '6px 12px', cursor: 'pointer', fontSize: 13 },
+  delConfirm: { background: COLORS.danger, color: '#fff', border: 0,
+    borderRadius: 8, padding: '6px 12px', cursor: 'pointer', fontSize: 13, fontWeight: 600 },
   closeBtn: { background: 'transparent', color: COLORS.muted, border: 0, fontSize: 18,
     cursor: 'pointer', padding: '0 6px' },
   body: { padding: 20, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8 },

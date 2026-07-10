@@ -5,9 +5,9 @@ import { COLORS, STATUS_CYCLE, STATUS_LABEL, STATUS_COLOR } from '../styles/them
 import { useSubtasks } from '../hooks/useSubtasks'
 import { deadlineBadge, formatYYMMDD } from '../lib/format'
 import { DateInput } from './DateInput'
-import { ExportToCalendarButton } from './ExportToCalendarButton'
+import { MoveToScheduleButton } from './MoveToScheduleButton'
 
-export function StepCard({ step, project, accent, onUpdate, onDelete }) {
+export function StepCard({ step, onUpdate, onDelete }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: step.id })
 
@@ -20,6 +20,10 @@ export function StepCard({ step, project, accent, onUpdate, onDelete }) {
 
   const [expanded, setExpanded] = useState(false)
   const [notes, setNotes] = useState(step.notes || '')
+  // Notes panel: collapsed by default when there's no saved content, open
+  // automatically if the step already has notes so a reader can see them
+  // without extra taps.
+  const [notesOpen, setNotesOpen] = useState(!!(step.notes && step.notes.trim()))
   const [deadline, setDeadline] = useState(step.deadline || '')
   const [newSub, setNewSub] = useState('')
   const [editingTitle, setEditingTitle] = useState(false)
@@ -29,8 +33,11 @@ export function StepCard({ step, project, accent, onUpdate, onDelete }) {
   const { subtasks, addSubtask, updateSubtask, deleteSubtask, refresh } = useSubtasks(expanded ? step.id : null)
 
   useEffect(() => { setNotes(step.notes || '') }, [step.notes])
+  useEffect(() => { setNotesOpen(!!(step.notes && step.notes.trim())) }, [step.notes])
   useEffect(() => { setDeadline(step.deadline || '') }, [step.deadline])
   useEffect(() => { setTitleDraft(step.title || '') }, [step.title])
+
+  const notesDirty = notes !== (step.notes || '')
 
   const saveTitle = async () => {
     const t = titleDraft.trim()
@@ -89,15 +96,16 @@ export function StepCard({ step, project, accent, onUpdate, onDelete }) {
         ) : (
           <span style={S.title} onClick={() => setExpanded(v => !v)}>{step.title}</span>
         )}
-        <button onClick={e => { e.stopPropagation(); setEditingTitle(true) }}
-          style={S.editIcon} title="Rename step">✎</button>
-        {step.deadline && (
+        {step.deadline && step.status !== 'Done' && (
           <span style={{ ...S.badge, background: badge.color, color: '#fff' }}>
             {badge.text}
           </span>
         )}
-        <span style={{ ...S.status, color: STATUS_COLOR[step.status] }}>{STATUS_LABEL[step.status]}</span>
-        <button onClick={() => setExpanded(v => !v)} style={S.chev}>{expanded ? '▾' : '▸'}</button>
+        <button onClick={e => { e.stopPropagation(); setEditingTitle(true) }}
+          style={S.iconBtn} title="Rename step">✎</button>
+        <button onClick={() => setExpanded(v => !v)} style={S.iconBtn} title={expanded ? 'Collapse' : 'Expand'}>
+          {expanded ? '▾' : '▸'}
+        </button>
       </div>
 
       {expanded && (
@@ -138,12 +146,25 @@ export function StepCard({ step, project, accent, onUpdate, onDelete }) {
             <button type="submit" style={S.subAddBtn}>+ Add</button>
           </form>
 
-          <div style={{ ...S.subhead, marginTop: 12 }}>Notes</div>
-          <textarea value={notes} onChange={e => setNotes(e.target.value)} onBlur={saveNotes}
-            style={S.notes} rows={3} placeholder="Enter notes…" />
+          <div style={S.notesHead}>
+            <span style={S.subhead}>Notes</span>
+            <span style={{ flex: 1 }} />
+            <button type="button" onClick={saveNotes} disabled={!notesDirty}
+              style={{ ...S.notesSave, opacity: notesDirty ? 1 : 0.4,
+                cursor: notesDirty ? 'pointer' : 'default' }}>
+              Save
+            </button>
+            <button type="button" onClick={() => setNotesOpen(v => !v)}
+              style={S.iconBtn} title={notesOpen ? 'Collapse notes' : 'Expand notes'}>
+              {notesOpen ? '▾' : '▸'}
+            </button>
+          </div>
+          {notesOpen && (
+            <textarea value={notes} onChange={e => setNotes(e.target.value)} onBlur={saveNotes}
+              style={S.notes} rows={10} placeholder="Enter notes…" />
+          )}
 
-          <ExportToCalendarButton step={step} project={project} accent={accent}
-            onUpdate={onUpdate} />
+          <MoveToScheduleButton step={step} />
 
           <button onClick={() => onDelete(step.id)} style={S.delStep}>Delete step</button>
         </div>
@@ -163,12 +184,10 @@ const S = {
   titleInput: { flex: 1, minWidth: 100, background: COLORS.card, color: COLORS.text,
     border: `1px solid ${COLORS.primary}`, borderRadius: 8, padding: '6px 10px',
     fontSize: 14, fontWeight: 500, outline: 'none', fontFamily: 'inherit' },
-  editIcon: { background: 'transparent', color: COLORS.muted, border: 0, cursor: 'pointer',
-    fontSize: 13, padding: '0 2px', flexShrink: 0 },
+  iconBtn: { background: 'transparent', color: COLORS.muted, border: 0, cursor: 'pointer',
+    fontSize: 18, lineHeight: 1, padding: 6, minWidth: 36, minHeight: 36,
+    display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   badge: { fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 999 },
-  status: { fontSize: 11, fontWeight: 600 },
-  chev: { color: COLORS.muted, fontSize: 12, background: 'transparent', border: 0,
-    cursor: 'pointer', padding: '0 4px' },
   body: { padding: 12, borderTop: `1px solid ${COLORS.border}`, display: 'flex',
     flexDirection: 'column', gap: 6 },
   fieldRow: { display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
@@ -190,6 +209,9 @@ const S = {
     borderRadius: 8, padding: '6px 10px', fontSize: 13, outline: 'none' },
   subAddBtn: { background: COLORS.border, color: COLORS.text, border: 0, borderRadius: 8,
     padding: '6px 10px', cursor: 'pointer', fontSize: 12 },
+  notesHead: { display: 'flex', alignItems: 'center', gap: 6, marginTop: 12 },
+  notesSave: { background: COLORS.primary, color: '#fff', border: 0, borderRadius: 6,
+    padding: '4px 12px', fontSize: 12, fontWeight: 600 },
   notes: { background: COLORS.card, color: COLORS.text, border: `1px solid ${COLORS.border}`,
     borderRadius: 8, padding: 10, fontSize: 13, resize: 'vertical', outline: 'none', fontFamily: 'inherit' },
   delStep: { alignSelf: 'flex-start', marginTop: 8, background: COLORS.danger, color: '#fff',

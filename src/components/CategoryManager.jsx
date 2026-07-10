@@ -7,12 +7,14 @@ import {
   SortableContext, verticalListSortingStrategy, arrayMove, useSortable
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { COLORS, PALETTE, UNCATEGORIZED } from '../styles/theme'
+import { COLORS, paletteFor, UNCATEGORIZED } from '../styles/theme'
 import { ARCHIVED } from '../lib/constants'
 
-export function CategoryManager({ open, onClose, categories, onAdd, onUpdate, onDelete, onReorder }) {
+export function CategoryManager({ open, onClose, categories, scope = 'work',
+  onAdd, onUpdate, onDelete, onReorder }) {
+  const palette = paletteFor(scope)
   const [newName, setNewName] = useState('')
-  const [newColor, setNewColor] = useState(PALETTE[0])
+  const [newColor, setNewColor] = useState(palette[0])
   const [editingId, setEditingId] = useState(null)
   const [editName, setEditName] = useState('')
   const [editColor, setEditColor] = useState('')
@@ -32,7 +34,7 @@ export function CategoryManager({ open, onClose, categories, onAdd, onUpdate, on
     setErr(null)
     try {
       await onAdd({ name: newName.trim(), color: newColor })
-      setNewName(''); setNewColor(PALETTE[0])
+      setNewName(''); setNewColor(palette[0])
     } catch (e) { setErr(e.message || String(e)) }
   }
 
@@ -72,6 +74,7 @@ export function CategoryManager({ open, onClose, categories, onAdd, onUpdate, on
               {categories.map(c => (
                 <CategoryRow key={c.id}
                   category={c}
+                  palette={palette}
                   isEditing={editingId === c.id}
                   isConfirming={confirmDel === c.id}
                   editName={editName} editColor={editColor}
@@ -91,7 +94,7 @@ export function CategoryManager({ open, onClose, categories, onAdd, onUpdate, on
         <form onSubmit={submitNew} style={S.addBlock}>
           <div style={S.addHead}>Add new category</div>
           <div style={S.addRow}>
-            <Swatches value={newColor} onChange={setNewColor} />
+            <Swatches palette={palette} value={newColor} onChange={setNewColor} />
             <input style={S.input} value={newName} onChange={e => setNewName(e.target.value)}
               placeholder="Category name" />
             <button type="submit" style={S.addBtn}>+ Add</button>
@@ -105,7 +108,7 @@ export function CategoryManager({ open, onClose, categories, onAdd, onUpdate, on
 }
 
 function CategoryRow({
-  category: c, isEditing, isConfirming,
+  category: c, palette, isEditing, isConfirming,
   editName, editColor, setEditName, setEditColor,
   onStartEdit, onSaveEdit, onCancelEdit,
   onAskDelete, onCancelDelete, onConfirmDelete,
@@ -125,7 +128,7 @@ function CategoryRow({
       <span {...attributes} {...listeners} style={S.handle} title="Drag to reorder">⋮⋮</span>
       {isEditing ? (
         <>
-          <Swatches value={editColor} onChange={setEditColor} />
+          <Swatches palette={palette} value={editColor} onChange={setEditColor} />
           <input style={S.input} value={editName} onChange={e => setEditName(e.target.value)} />
           <button onClick={onSaveEdit} style={S.save}>Save</button>
           <button onClick={onCancelEdit} style={S.cancel}>Cancel</button>
@@ -156,10 +159,10 @@ function CategoryRow({
   )
 }
 
-function Swatches({ value, onChange }) {
+function Swatches({ palette, value, onChange }) {
   return (
     <div style={SW.row}>
-      {PALETTE.map(c => (
+      {palette.map(c => (
         <button key={c} type="button" onClick={() => onChange(c)}
           style={{
             ...SW.swatch,

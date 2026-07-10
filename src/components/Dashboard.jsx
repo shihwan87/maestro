@@ -128,7 +128,8 @@ export function Dashboard({ scope = 'work', title = 'Projects', itemNoun = 'Proj
       <ProjectModal project={opened}
         accent={opened ? colorFor(opened.category) : null}
         onClose={() => setOpened(null)}
-        onEdit={() => { setEditing(opened); setAddOpen(true) }} />
+        onEdit={() => { setEditing(opened); setAddOpen(true) }}
+        onDelete={doDelete} />
 
       <AddProjectModal
         open={addOpen}
@@ -142,6 +143,7 @@ export function Dashboard({ scope = 'work', title = 'Projects', itemNoun = 'Proj
 
       <CategoryManager open={catMgrOpen} onClose={() => setCatMgrOpen(false)}
         categories={categories}
+        scope={scope}
         onAdd={addCategory} onUpdate={updateCategory} onDelete={deleteCategory}
         onReorder={reorderCategories} />
     </div>
