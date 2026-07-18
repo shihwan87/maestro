@@ -8,8 +8,8 @@ import { COLORS } from './styles/theme'
 
 const CalendarApp = lazy(() => import('./calendar/CalendarApp'))
 
-const TOP_TAB_KEY = 'schemanager.topTab'
-const SUB_TAB_KEY = 'schemanager.activeTab'
+const TOP_TAB_KEY = 'maestro.topTab'
+const SUB_TAB_KEY = 'maestro.activeTab'
 
 export default function App() {
   const [topTab, setTopTab] = useState(() => sessionStorage.getItem(TOP_TAB_KEY) || 'tasks')

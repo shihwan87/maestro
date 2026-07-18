@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { COLORS } from '../styles/theme'
 
-const KEY = 'schemanager.unlocked'
+const KEY = 'maestro.unlocked'
 
 export function PinGate({ children }) {
   const [unlocked, setUnlocked] = useState(() => sessionStorage.getItem(KEY) === '1')

@@ -53,7 +53,7 @@ export function ConfigTab() {
   }
 
   const commit = import.meta.env.VITE_COMMIT_SHA || 'dev'
-  const repoUrl = 'https://github.com/shihwan87/schemanager/blob/main/full_dev_plan.md'
+  const repoUrl = 'https://github.com/shihwan87/maestro/blob/main/full_dev_plan.md'
 
   return (
     <div style={S.page} className="safe-top">
