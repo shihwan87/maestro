@@ -10,9 +10,9 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png'],
       manifest: {
-        name: 'Schemanager / 프로젝트 매니저',
-        short_name: 'Schemanager',
-        description: 'Personal project manager / 개인 프로젝트 관리',
+        name: 'Maestro',
+        short_name: 'Maestro',
+        description: 'Personal task and schedule manager',
         theme_color: '#0a0a14',
         background_color: '#0a0a14',
         display: 'standalone',

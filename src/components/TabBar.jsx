@@ -39,7 +39,7 @@ export function TabBar({ active, onChange, markers = {} }) {
 }
 
 const S = {
-  bar: { position: 'fixed', left: 0, right: 0, top: 0,
+  bar: { position: 'fixed', left: 0, right: 0, top: 48,
     display: 'flex', justifyContent: 'space-around',
     background: COLORS.card, borderBottom: `1px solid ${COLORS.border}`,
     zIndex: 50 },

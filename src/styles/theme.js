@@ -56,3 +56,18 @@ export const STATUS_COLOR = {
 }
 
 export const UNCATEGORIZED = 'Uncategorized'
+
+export const CATEGORY_COLOR = {
+  work: COLORS.primary,
+  personal: PALETTE[1],
+  holiday: '#e84057',
+}
+
+export function textOnColor(bg) {
+  if (!/^#[0-9a-fA-F]{6}$/.test(bg)) return '#fff'
+  const r = parseInt(bg.slice(1, 3), 16) / 255
+  const g = parseInt(bg.slice(3, 5), 16) / 255
+  const b = parseInt(bg.slice(5, 7), 16) / 255
+  const lum = 0.299 * r + 0.587 * g + 0.114 * b
+  return lum > 0.6 ? '#0a0a14' : '#fff'
+}

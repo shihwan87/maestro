@@ -26,7 +26,7 @@ export function PinGate({ children }) {
   return (
     <div style={S.wrap} className="safe-top safe-bottom">
       <form onSubmit={submit} style={S.box}>
-        <h1 style={S.title}>Schemanager</h1>
+        <h1 style={S.title}>Maestro</h1>
         <p style={S.sub}>Enter PIN</p>
         <input
           type="password" inputMode="numeric" autoFocus
