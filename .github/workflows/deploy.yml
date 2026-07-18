@@ -29,13 +29,11 @@ jobs:
 
       - name: Write .env from secrets
         run: |
-          cat > .env <<EOF
-          VITE_APP_PIN=${{ secrets.VITE_APP_PIN }}
-          VITE_SUPABASE_URL=${{ secrets.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_ANON_KEY=${{ secrets.VITE_SUPABASE_ANON_KEY }}
-          VITE_CALENDAR_EMAIL=${{ secrets.VITE_CALENDAR_EMAIL }}
-          VITE_CALENDAR_PASSWORD=${{ secrets.VITE_CALENDAR_PASSWORD }}
-          EOF
+          echo "VITE_APP_PIN=${{ secrets.VITE_APP_PIN }}" >> .env
+          echo "VITE_SUPABASE_URL=${{ secrets.VITE_SUPABASE_URL }}" >> .env
+          echo "VITE_SUPABASE_ANON_KEY=${{ secrets.VITE_SUPABASE_ANON_KEY }}" >> .env
+          echo "VITE_CALENDAR_EMAIL=${{ secrets.VITE_CALENDAR_EMAIL }}" >> .env
+          echo "VITE_CALENDAR_PASSWORD=${{ secrets.VITE_CALENDAR_PASSWORD }}" >> .env
 
       - run: npm run build
 
