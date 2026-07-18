@@ -171,9 +171,11 @@ export interface NewEventInput { // freestanding (non-task) event create/update 
 export type EventCrudRequest = // event-crud/index.ts request body, discriminated union
   | { action: 'create'; input: NewEventInput }
   | { action: 'update'; schedEventId: string; input: Partial<NewEventInput> }
-  | { action: 'delete'; schedEventId: string; deleteScope: DeleteScope }
+  | { action: 'delete'; schedEventId: string; deleteScope: DeleteScope; occurrenceStartTs?: string }
   | { action: 'push'; schedEventId: string }
-  | { action: 'unpush'; schedEventId: string };
+  | { action: 'unpush'; schedEventId: string }
+  | { action: 'createOverride'; masterId: string; occurrenceStartTs: string; input: NewEventInput }
+  | { action: 'editFuture'; masterId: string; occurrenceStartTs: string; input: NewEventInput };
 
 export interface EventCrudResponse { // event-crud/index.ts response body
   schedEvent: SchedEvent | null;    // null on successful delete

@@ -9,11 +9,9 @@
 // not a top-level 500, so it never hides other calendars' results.
 // Architecture note: single-tenant today, but loops over every row in
 // sched_google_auth rather than assuming one fixed user, so a second user
-// connecting later needs no change here. Holiday calendars (HOLIDAY_CAL_IDS)
-// are wired in during Phase 7 (interface_contract.md module 12 describes
-// the eventual full version) — this phase only syncs WORK_CAL_ID/
-// PERSONAL_CAL_ID, per the source prompt's explicit "skip holidays this
-// phase" for Phase 2.
+// connecting later needs no change here. Phase 7: HOLIDAY_CAL_IDS
+// (comma-separated env var) now included in the default sync set alongside
+// WORK_CAL_ID/PERSONAL_CAL_ID — resolved to category='holiday'.
 
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { getValidAccessToken } from '../_shared/google-auth.ts';
@@ -28,18 +26,24 @@ function adminClient() {
   );
 }
 
+function getHolidayCalIds(): string[] {
+  const raw = Deno.env.get('HOLIDAY_CAL_IDS') ?? '';
+  return raw.split(',').map((s) => s.trim()).filter(Boolean);
+}
+
 function resolveCategory(calendarId: string): Category | null {
   if (calendarId === Deno.env.get('WORK_CAL_ID')) return 'work';
   if (calendarId === Deno.env.get('PERSONAL_CAL_ID')) return 'personal';
-  // HOLIDAY_CAL_IDS recognition arrives in Phase 7 — an unrecognized
-  // calendar id is skipped, not guessed at.
+  if (getHolidayCalIds().includes(calendarId)) return 'holiday';
   return null;
 }
 
 function defaultCalendarIds(): string[] {
-  return [Deno.env.get('WORK_CAL_ID'), Deno.env.get('PERSONAL_CAL_ID')].filter(
-    (id): id is string => !!id,
-  );
+  return [
+    Deno.env.get('WORK_CAL_ID'),
+    Deno.env.get('PERSONAL_CAL_ID'),
+    ...getHolidayCalIds(),
+  ].filter((id): id is string => !!id);
 }
 
 Deno.serve(async (req: Request): Promise<Response> => {

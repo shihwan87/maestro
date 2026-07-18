@@ -371,15 +371,15 @@ export default function CalendarApp() {
   }, [session]);
 
   if (session === undefined) {
-    return <p style={{ textAlign: 'center', marginTop: 80 }}>Loading…</p>;
+    return <p style={{ color: COLORS.muted, textAlign: 'center', marginTop: 80 }}>Loading calendar…</p>;
   }
 
   if (!session) {
-    return <LoginScreen />;
+    return <p style={{ color: COLORS.danger, textAlign: 'center', marginTop: 80 }}>Calendar sign-in failed. Check VITE_CALENDAR_EMAIL / VITE_CALENDAR_PASSWORD.</p>;
   }
 
   if (googleConnected === null) {
-    return <p style={{ textAlign: 'center', marginTop: 80 }}>Loading…</p>;
+    return <p style={{ color: COLORS.muted, textAlign: 'center', marginTop: 80 }}>Loading…</p>;
   }
 
   return (
@@ -409,10 +409,7 @@ export default function CalendarApp() {
           </button>
         </div>
       )}
-      {!googleConnected && !skippedGoogle ? (
-        <GoogleConnectPrompt onConnected={() => setSkippedGoogle(true)} />
-      ) : (
-        <>
+      <>
           <header
             style={{
               display: 'flex',
@@ -424,7 +421,6 @@ export default function CalendarApp() {
           >
             <h1 style={{ fontSize: 16, margin: 0 }}>Calendar</h1>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <SetPasswordControl />
               <SyncButton onSyncComplete={handleSyncComplete} />
             </div>
           </header>
@@ -461,7 +457,6 @@ export default function CalendarApp() {
             onEdit={() => setDetailMode('edit')}
           />
         </>
-      )}
     </div>
   );
 }

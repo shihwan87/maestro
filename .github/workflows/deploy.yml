@@ -33,6 +33,8 @@ jobs:
           VITE_APP_PIN=${{ secrets.VITE_APP_PIN }}
           VITE_SUPABASE_URL=${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY=${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          VITE_CALENDAR_EMAIL=${{ secrets.VITE_CALENDAR_EMAIL }}
+          VITE_CALENDAR_PASSWORD=${{ secrets.VITE_CALENDAR_PASSWORD }}
           EOF
 
       - run: npm run build

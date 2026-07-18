@@ -82,7 +82,7 @@ function localDateStr(iso: string): string {
   return `${kst.getUTCFullYear()}-${String(kst.getUTCMonth() + 1).padStart(2, '0')}-${String(kst.getUTCDate()).padStart(2, '0')}`;
 }
 
-function toGoogleEventBody(event: Pick<SchedEvent, 'title' | 'description' | 'start_ts' | 'end_ts' | 'all_day' | 'task_id' | 'category'>): GoogleEventBody {
+function toGoogleEventBody(event: Pick<SchedEvent, 'title' | 'description' | 'start_ts' | 'end_ts' | 'all_day' | 'task_id' | 'category' | 'rrule'>): GoogleEventBody {
   const body: GoogleEventBody = {
     summary: event.title,
     description: event.description ?? undefined,
@@ -100,6 +100,9 @@ function toGoogleEventBody(event: Pick<SchedEvent, 'title' | 'description' | 'st
       },
     },
   };
+  if (event.rrule) {
+    body.recurrence = [`RRULE:${event.rrule}`];
+  }
   return body;
 }
 
@@ -338,27 +341,227 @@ export async function createOrUpdateFreestandingEvent(
   return updated;
 }
 
+export async function createOverrideInstance(
+  masterId: string,
+  occurrenceStartTs: string,
+  input: NewEventInput,
+  userId: string,
+): Promise<SchedEvent> {
+  const master = await getSchedEvent(masterId);
+
+  // Check if an override already exists for this slot
+  const existing = await adminClient()
+    .from('sched_events')
+    .select('*')
+    .eq('override_of_event_id', masterId)
+    .eq('override_start_ts', occurrenceStartTs)
+    .maybeSingle();
+  if (existing.data) {
+    // Update existing override
+    const range = input.allDay ? allDayRange(input.startTs) : null;
+    const patch: Record<string, unknown> = {
+      title: input.title,
+      description: input.description,
+      category: input.category,
+      all_day: input.allDay,
+      start_ts: range ? range.start_ts : input.startTs,
+      end_ts: range ? range.end_ts : input.endTs,
+      color_override: input.colorOverride,
+      extended_props: null, // clear cancelled flag if it was set
+    };
+    const { data, error } = await adminClient()
+      .from('sched_events')
+      .update(patch)
+      .eq('id', existing.data.id)
+      .select('*')
+      .single();
+    if (error) throw new Error(`createOverrideInstance update failed: ${error.message}`);
+    return data as SchedEvent;
+  }
+
+  // Create new override row
+  const range = input.allDay ? allDayRange(input.startTs) : null;
+  const row = {
+    user_id: userId,
+    google_event_id: null,
+    calendar_id: master.calendar_id,
+    category: input.category,
+    source: 'app' as const,
+    title: input.title,
+    description: input.description,
+    start_ts: range ? range.start_ts : input.startTs,
+    end_ts: range ? range.end_ts : input.endTs,
+    all_day: input.allDay,
+    rrule: null,
+    recurrence_parent_id: masterId,
+    override_of_event_id: masterId,
+    override_start_ts: occurrenceStartTs,
+    task_id: null,
+    color_override: input.colorOverride,
+  };
+  const { data, error } = await adminClient().from('sched_events').insert(row).select('*').single();
+  if (error) throw new Error(`createOverrideInstance insert failed: ${error.message}`);
+  return data as SchedEvent;
+}
+
+export async function splitRecurringEvent(
+  masterId: string,
+  occurrenceStartTs: string,
+  input: NewEventInput,
+  userId: string,
+): Promise<SchedEvent> {
+  const master = await getSchedEvent(masterId);
+  if (!master.rrule) throw new Error('splitRecurringEvent: event has no rrule');
+
+  // 1. Truncate the original master's RRULE to end just before this occurrence
+  const untilDate = new Date(new Date(occurrenceStartTs).getTime() - 1000);
+  const until = untilDate.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z');
+  const truncatedRule = `${master.rrule.replace(/;?UNTIL=[^;]*/, '')};UNTIL=${until}`;
+
+  await adminClient().from('sched_events')
+    .update({ rrule: truncatedRule })
+    .eq('id', masterId);
+
+  // 2. Create a new master with the edited values, carrying the same RRULE
+  //    but anchored at the chosen occurrence's date/time
+  const range = input.allDay ? allDayRange(input.startTs) : null;
+  const newMasterRow = {
+    user_id: userId,
+    google_event_id: null,
+    calendar_id: null,
+    category: input.category,
+    source: 'app' as const,
+    title: input.title,
+    description: input.description,
+    start_ts: range ? range.start_ts : input.startTs,
+    end_ts: range ? range.end_ts : input.endTs,
+    all_day: input.allDay,
+    rrule: input.rrule ?? master.rrule.replace(/;?UNTIL=[^;]*/g, ''),
+    task_id: null,
+    color_override: input.colorOverride,
+  };
+  const { data: newMaster, error: insertErr } = await adminClient()
+    .from('sched_events')
+    .insert(newMasterRow)
+    .select('*')
+    .single();
+  if (insertErr) throw new Error(`splitRecurringEvent insert failed: ${insertErr.message}`);
+
+  // 3. Migrate any override rows at or after the split point to the new master
+  await adminClient().from('sched_events')
+    .update({
+      override_of_event_id: newMaster.id,
+      recurrence_parent_id: newMaster.id,
+    })
+    .eq('override_of_event_id', masterId)
+    .gte('override_start_ts', occurrenceStartTs);
+
+  return newMaster as SchedEvent;
+}
+
 export async function deleteExportedEvent(
   schedEventId: string,
-  accessToken: string | null, // null allowed — only required if the row turns out to be pushed
+  accessToken: string | null,
   scope: DeleteScope,
+  occurrenceStartTs?: string,
 ): Promise<void> {
   const event = await getSchedEvent(schedEventId);
+  const isRecurring = !!event.rrule;
 
-  if (event.google_event_id) {
-    if (!accessToken) {
-      throw new GoogleAuthError('deleteExportedEvent: event is pushed to Google, an access token is required');
+  if (scope === 'all' || !isRecurring) {
+    // Delete the master + all overrides, and Google-side if pushed
+    if (event.google_event_id) {
+      if (!accessToken) {
+        throw new GoogleAuthError('deleteExportedEvent: event is pushed to Google, an access token is required');
+      }
+      await deleteEvent(event.calendar_id!, event.google_event_id, accessToken, 'all');
     }
-    // occurrenceStartTs only matters for scope='future'/'this' on a
-    // recurring event — nothing creates recurring app events yet (arrives
-    // Phase 6), so this always resolves to the master's own start_ts today.
-    await deleteEvent(event.calendar_id!, event.google_event_id, accessToken, scope, event.start_ts);
+    if (event.task_id) await syncStepGcalId(event.task_id, null);
+
+    // Delete all override rows first, then the master
+    await adminClient().from('sched_events').delete().eq('override_of_event_id', schedEventId);
+    const { error } = await adminClient().from('sched_events').delete().eq('id', schedEventId);
+    if (error) throw new Error(`exporter.deleteExportedEvent delete failed: ${error.message}`);
+    return;
   }
 
-  if (event.task_id && scope === 'all') {
-    await syncStepGcalId(event.task_id, null);
+  if (scope === 'this') {
+    if (!occurrenceStartTs) {
+      throw new Error("deleteExportedEvent(scope='this') requires occurrenceStartTs");
+    }
+    // Create a cancellation override row so expandForRange skips this slot
+    const existing = await adminClient()
+      .from('sched_events')
+      .select('id')
+      .eq('override_of_event_id', schedEventId)
+      .eq('override_start_ts', occurrenceStartTs)
+      .maybeSingle();
+    if (existing.data) {
+      // Override row already exists — mark it cancelled
+      await adminClient().from('sched_events')
+        .update({ extended_props: { cancelled: true } })
+        .eq('id', existing.data.id);
+    } else {
+      // Create a new cancellation override row
+      await adminClient().from('sched_events').insert({
+        user_id: event.user_id,
+        google_event_id: null,
+        calendar_id: event.calendar_id,
+        category: event.category,
+        source: event.source,
+        title: event.title,
+        description: null,
+        start_ts: occurrenceStartTs,
+        end_ts: occurrenceStartTs,
+        all_day: event.all_day,
+        rrule: null,
+        recurrence_parent_id: schedEventId,
+        override_of_event_id: schedEventId,
+        override_start_ts: occurrenceStartTs,
+        task_id: null,
+        color_override: null,
+        extended_props: { cancelled: true },
+      });
+    }
+
+    // If pushed to Google, delete this single instance on Google side too
+    if (event.google_event_id && accessToken) {
+      try {
+        await deleteEvent(event.calendar_id!, event.google_event_id, accessToken, 'this', occurrenceStartTs);
+      } catch {
+        // Non-fatal — local cancellation is authoritative
+      }
+    }
+    return;
   }
 
-  const { error } = await adminClient().from('sched_events').delete().eq('id', schedEventId);
-  if (error) throw new Error(`exporter.deleteExportedEvent delete failed: ${error.message}`);
+  if (scope === 'future') {
+    if (!occurrenceStartTs) {
+      throw new Error("deleteExportedEvent(scope='future') requires occurrenceStartTs");
+    }
+    // Truncate the RRULE with UNTIL just before this occurrence
+    const untilDate = new Date(new Date(occurrenceStartTs).getTime() - 1000);
+    const until = untilDate.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z');
+    const currentRule = event.rrule!;
+    const truncatedRule = `${currentRule.replace(/;?UNTIL=[^;]*/, '')};UNTIL=${until}`;
+
+    await adminClient().from('sched_events')
+      .update({ rrule: truncatedRule })
+      .eq('id', schedEventId);
+
+    // Delete any override rows at or after this occurrence
+    await adminClient().from('sched_events')
+      .delete()
+      .eq('override_of_event_id', schedEventId)
+      .gte('override_start_ts', occurrenceStartTs);
+
+    // If pushed to Google, truncate the rule there too
+    if (event.google_event_id && accessToken) {
+      try {
+        await deleteEvent(event.calendar_id!, event.google_event_id, accessToken, 'future', occurrenceStartTs);
+      } catch {
+        // Non-fatal — local truncation is authoritative
+      }
+    }
+  }
 }

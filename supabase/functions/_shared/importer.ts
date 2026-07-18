@@ -47,7 +47,9 @@ export function mapGoogleEventToSchedEvent(
   const endTs = allDay ? `${gEvent.end.date}T00:00:00${SEOUL_OFFSET}` : gEvent.end.dateTime!;
 
   const source: EventSource =
-    gEvent.extendedProperties?.private?.source === 'schedule_app' ? 'app' : 'imported';
+    category === 'holiday' ? 'holiday'
+    : gEvent.extendedProperties?.private?.source === 'schedule_app' ? 'app'
+    : 'imported';
 
   // Google represents a recurring master's rule as one or more RFC 5545
   // lines (RRULE, plus optional EXRULE/EXDATE/RDATE) — only the RRULE line
@@ -141,6 +143,8 @@ export async function upsertSchedEvents(
         end_ts: row.end_ts,
         all_day: row.all_day,
         rrule: row.rrule,
+        recurrence_parent_id: row.recurrence_parent_id,
+        override_of_event_id: row.override_of_event_id,
         override_start_ts: row.override_start_ts,
         extended_props: row.extended_props,
         synced_at: row.synced_at,
@@ -212,6 +216,34 @@ export async function importCalendar(
     );
 
     const rows = active.map((e) => mapGoogleEventToSchedEvent(e, userId, calendarId, category));
+
+    // Phase 6: link imported override instances to their local master row.
+    // Google gives override instances a `recurringEventId` pointing at the
+    // master's google_event_id. Look up the local master row and set
+    // recurrence_parent_id + override_of_event_id so expandForRange can
+    // apply overrides correctly.
+    const overrideRows = active.filter((e) => !!e.recurringEventId);
+    if (overrideRows.length > 0) {
+      const masterGoogleIds = [...new Set(overrideRows.map((e) => e.recurringEventId!))];
+      const { data: masterRows } = await supabase
+        .from('sched_events')
+        .select('id, google_event_id')
+        .eq('user_id', userId)
+        .eq('calendar_id', calendarId)
+        .in('google_event_id', masterGoogleIds);
+      const masterMap = new Map((masterRows ?? []).map((r) => [r.google_event_id, r.id]));
+      for (let i = 0; i < active.length; i++) {
+        const gEvent = active[i];
+        if (gEvent.recurringEventId) {
+          const localMasterId = masterMap.get(gEvent.recurringEventId);
+          if (localMasterId) {
+            rows[i].recurrence_parent_id = localMasterId;
+            rows[i].override_of_event_id = localMasterId;
+          }
+        }
+      }
+    }
+
     const { inserted, updated } = await upsertSchedEvents(rows);
 
     let deleted = 0;

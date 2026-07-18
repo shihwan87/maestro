@@ -13,8 +13,10 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import {
   createOrUpdateFreestandingEvent,
+  createOverrideInstance,
   deleteExportedEvent,
   pushEventToGoogle,
+  splitRecurringEvent,
   unpushEventFromGoogle,
 } from '../_shared/exporter.ts';
 import { getValidAccessToken } from '../_shared/google-auth.ts';
@@ -73,7 +75,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
         if (error) throw new Error(error.message);
         const row = existing as SchedEvent | null;
         const accessToken = row?.google_event_id ? await getValidAccessToken(userId) : null;
-        await deleteExportedEvent(body.schedEventId, accessToken, body.deleteScope);
+        await deleteExportedEvent(body.schedEventId, accessToken, body.deleteScope, body.occurrenceStartTs);
         return jsonResponse({ schedEvent: null } satisfies EventCrudResponse);
       }
       case 'push': {
@@ -84,6 +86,24 @@ Deno.serve(async (req: Request): Promise<Response> => {
       case 'unpush': {
         const accessToken = await getValidAccessToken(userId);
         const schedEvent = await unpushEventFromGoogle(body.schedEventId, accessToken);
+        return jsonResponse({ schedEvent } satisfies EventCrudResponse);
+      }
+      case 'createOverride': {
+        const schedEvent = await createOverrideInstance(
+          body.masterId,
+          body.occurrenceStartTs,
+          body.input,
+          userId,
+        );
+        return jsonResponse({ schedEvent } satisfies EventCrudResponse);
+      }
+      case 'editFuture': {
+        const schedEvent = await splitRecurringEvent(
+          body.masterId,
+          body.occurrenceStartTs,
+          body.input,
+          userId,
+        );
         return jsonResponse({ schedEvent } satisfies EventCrudResponse);
       }
       default:
