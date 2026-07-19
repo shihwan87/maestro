@@ -55,38 +55,42 @@ Supabase's webhook needs to trigger `repository_dispatch` on the maestro repo. G
 
 Copy the token — you paste it into Supabase in the next step.
 
-### 4. Configure Supabase webhooks
+### 4. Deploy the `inbox-dispatch` Edge Function
 
-Supabase Dashboard → Database → Webhooks → **Create a new hook**.
+Supabase's plain Database Webhooks send a fixed `{type, table, record, old_record}` body, which doesn't match GitHub's dispatch API. We use an Edge Function (`supabase/functions/inbox-dispatch/`) as the translator.
 
-**Webhook A — `inbox-new`:**
-- Name: `inbox-propose-dispatch`
+**a. Set the GitHub PAT as a Supabase secret** (the function reads it at runtime, so it never sits in a client-visible header):
+```bash
+cd schemanager
+supabase secrets set GITHUB_PAT=github_pat_<paste-from-step-3>
+```
+
+**b. Deploy the function:**
+```bash
+supabase functions deploy inbox-dispatch --no-verify-jwt
+```
+(`--no-verify-jwt` because Supabase DB webhooks don't carry a user JWT — the function is authenticated only by the fact that it lives inside your Supabase project.)
+
+**c. Note the function URL** printed by the deploy command:
+```
+https://<project-ref>.supabase.co/functions/v1/inbox-dispatch
+```
+
+**d. Configure ONE Supabase webhook that points at the function.**
+
+Supabase Dashboard → Database → Webhooks → **Create a new hook**:
+- Name: `inbox-dispatch`
 - Table: `claude_requests`
-- Events: **Insert**
-- Type: **HTTP Request**
+- Events: ☑ **Insert**   ☑ **Update**  (Delete unchecked)
+- Type: **HTTP Request** (not "Supabase Edge Functions" — even though it targets one, using the plain HTTP path avoids the extra JWT wrapping)
 - Method: `POST`
-- URL: `https://api.github.com/repos/shihwan87/maestro/dispatches`
+- URL: `https://<project-ref>.supabase.co/functions/v1/inbox-dispatch`
 - HTTP Headers:
-  ```
-  Accept: application/vnd.github+json
-  Authorization: Bearer <the-PAT-from-step-3>
-  X-GitHub-Api-Version: 2022-11-28
-  ```
-- HTTP Params: none
-- Body:
-  ```json
-  {"event_type":"inbox-new","client_payload":{"request_id":"{{ record.id }}"}}
-  ```
+  | Header | Value |
+  |---|---|
+  | `Content-Type` | `application/json` |
 
-**Webhook B — `inbox-approved`:**
-- Same as above but:
-- Events: **Update**
-- Conditions (filter): `record.status = 'executing' AND old_record.status != 'executing'`
-  (Supabase Webhooks UI has a "Conditions" panel — use it, or handle it in the payload template.)
-- Body:
-  ```json
-  {"event_type":"inbox-approved","client_payload":{"request_id":"{{ record.id }}"}}
-  ```
+No payload template needed — Supabase auto-sends `{type, table, record, old_record}`, which is what the function expects. The function itself decides whether to fire GitHub (new open row → `inbox-new`; open→executing transition → `inbox-approved`) or ignore.
 
 ### 5. Rotate the PWA build
 
