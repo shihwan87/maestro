@@ -1,0 +1,67 @@
+name: Auto-inbox — execute
+
+# Fires when the user hits "Approve & run" in the CONFIG tab, which flips
+# claude_requests.status to 'executing'. Supabase webhook then posts a
+# repository_dispatch event of type 'inbox-approved'. The Claude agent
+# reads the pre-drafted proposal, implements it, commits, pushes, and marks
+# the row 'done' with the commit sha.
+
+on:
+  repository_dispatch:
+    types: [inbox-approved]
+  workflow_dispatch:
+    inputs:
+      request_id:
+        description: 'claude_requests.id to execute'
+        required: true
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: inbox-${{ github.event.client_payload.request_id || inputs.request_id }}
+  cancel-in-progress: false
+
+jobs:
+  execute:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: schemanager/package-lock.json
+
+      - name: Install deps
+        working-directory: schemanager
+        run: npm ci
+
+      - name: Configure git identity
+        run: |
+          git config user.name  "maestro-inbox-bot"
+          git config user.email "bot@maestro.local"
+
+      - uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          allowed_tools: "Read,Write,Edit,Grep,Glob,Bash"
+          prompt_file: .github/prompts/inbox-execute.md
+        env:
+          REQUEST_ID: ${{ github.event.client_payload.request_id || inputs.request_id }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+
+      - name: Record failure on Claude action error
+        if: failure()
+        working-directory: schemanager
+        env:
+          REQUEST_ID: ${{ github.event.client_payload.request_id || inputs.request_id }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: node scripts/inbox-update.mjs "$REQUEST_ID" failed "Execute step errored — see workflow run ${{ github.run_id }}"

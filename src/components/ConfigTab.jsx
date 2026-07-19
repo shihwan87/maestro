@@ -4,8 +4,17 @@ import { supabase } from '../lib/supabase'
 
 const STATUS_COLOR = {
   open:      '#f7b955',
+  proposed:  '#5b9dff',
+  executing: '#9b7bff',
   done:      '#3ddc97',
   dismissed: '#6b7280',
+  failed:    '#ff5b6e',
+}
+
+const TIER_COLOR = {
+  trivial:     '#3ddc97',
+  ambiguous:   '#f7b955',
+  non_trivial: '#ff5b6e',
 }
 
 export function ConfigTab() {
@@ -47,19 +56,23 @@ export function ConfigTab() {
     finally { setSending(false) }
   }
 
-  const setStatus = async (id, status) => {
-    const { error } = await supabase.from('claude_requests').update({ status }).eq('id', id)
+  const setStatus = async (id, status, extra = {}) => {
+    const patch = { status, ...extra }
+    if (status === 'executing') patch.approved_at = new Date().toISOString()
+    const { error } = await supabase.from('claude_requests').update(patch).eq('id', id)
     if (error) setErr(error.message)
   }
 
-  const commit = import.meta.env.VITE_COMMIT_SHA || 'dev'
+  const approve = (r) => setStatus(r.id, 'executing')
+  const reject  = (r) => setStatus(r.id, 'dismissed')
+  const commit  = import.meta.env.VITE_COMMIT_SHA || 'dev'
   const repoUrl = 'https://github.com/shihwan87/maestro/blob/main/full_dev_plan.md'
 
   return (
     <div style={S.page} className="safe-top">
       <header style={S.header}>
         <h1 style={S.h1}>Config</h1>
-        <p style={S.sub}>Send a request to Claude. He reads them next time he opens this repo.</p>
+        <p style={S.sub}>Send a request to Claude. The agent proposes a plan; you approve here.</p>
       </header>
 
       <form onSubmit={submit} style={S.form}>
@@ -75,28 +88,75 @@ export function ConfigTab() {
         </div>
       </form>
 
-      <h2 style={S.h2}>Past requests</h2>
+      <h2 style={S.h2}>Requests</h2>
       {loading && <p style={S.muted}>Loading…</p>}
       {!loading && requests.length === 0 && <p style={S.muted}>No requests yet.</p>}
       <ul style={S.list}>
-        {requests.map(r => (
-          <li key={r.id} style={S.item}>
-            <div style={S.itemHead}>
-              <span style={{ ...S.statusPill, background: STATUS_COLOR[r.status] || COLORS.muted }}>
-                {r.status}
-              </span>
-              <span style={S.muted}>{new Date(r.created_at).toLocaleString()}</span>
-            </div>
-            <div style={S.itemText}>{r.text}</div>
-            {r.response && <div style={S.response}><strong>Reply:</strong> {r.response}</div>}
-            {r.status === 'open' && (
-              <div style={S.itemActions}>
-                <button style={S.smallBtn} onClick={() => setStatus(r.id, 'done')}>Mark done</button>
-                <button style={S.smallBtn} onClick={() => setStatus(r.id, 'dismissed')}>Dismiss</button>
+        {requests.map(r => {
+          const commitHref = r.commit_sha
+            ? `https://github.com/shihwan87/maestro/commit/${r.commit_sha}`
+            : null
+          return (
+            <li key={r.id} style={S.item}>
+              <div style={S.itemHead}>
+                <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                  <span style={{ ...S.statusPill, background: STATUS_COLOR[r.status] || COLORS.muted }}>
+                    {r.status}
+                  </span>
+                  {r.tier && (
+                    <span style={{ ...S.tierPill, color: TIER_COLOR[r.tier] || COLORS.muted,
+                      borderColor: TIER_COLOR[r.tier] || COLORS.border }}>
+                      {r.tier.replace('_', ' ')}
+                    </span>
+                  )}
+                </div>
+                <span style={S.muted}>{new Date(r.created_at).toLocaleString()}</span>
               </div>
-            )}
-          </li>
-        ))}
+              <div style={S.itemText}>{r.text}</div>
+
+              {r.proposal && (
+                <div style={S.proposal}>
+                  <strong style={{ fontSize: 12, color: COLORS.muted }}>PROPOSAL</strong>
+                  <div style={{ whiteSpace: 'pre-wrap', marginTop: 4 }}>{r.proposal}</div>
+                </div>
+              )}
+
+              {r.response && (
+                <div style={S.response}><strong>Reply:</strong> {r.response}</div>
+              )}
+              {r.error && (
+                <div style={S.errBox}><strong>Error:</strong> {r.error}</div>
+              )}
+              {commitHref && (
+                <div style={S.commitRow}>
+                  <a style={S.link} href={commitHref} target="_blank" rel="noreferrer">
+                    {r.commit_sha.slice(0, 7)}
+                  </a>
+                </div>
+              )}
+
+              {r.status === 'proposed' && (
+                <div style={S.itemActions}>
+                  <button style={{ ...S.smallBtn, borderColor: TIER_COLOR.trivial, color: TIER_COLOR.trivial }}
+                    onClick={() => approve(r)}>Approve & run</button>
+                  <button style={S.smallBtn} onClick={() => reject(r)}>Reject</button>
+                </div>
+              )}
+              {r.status === 'open' && (
+                <div style={S.itemActions}>
+                  <button style={S.smallBtn} onClick={() => setStatus(r.id, 'done')}>Mark done</button>
+                  <button style={S.smallBtn} onClick={() => setStatus(r.id, 'dismissed')}>Dismiss</button>
+                </div>
+              )}
+              {r.status === 'failed' && (
+                <div style={S.itemActions}>
+                  <button style={S.smallBtn} onClick={() => setStatus(r.id, 'open', { error: null })}>Retry</button>
+                  <button style={S.smallBtn} onClick={() => setStatus(r.id, 'dismissed')}>Dismiss</button>
+                </div>
+              )}
+            </li>
+          )
+        })}
       </ul>
 
       <footer style={S.footer}>
@@ -123,14 +183,20 @@ const S = {
     padding: '10px 16px', cursor: 'pointer', fontSize: 14, fontWeight: 600 },
   list: { listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 10 },
   item: { background: COLORS.card, border: `1px solid ${COLORS.border}`, borderRadius: 12, padding: 12 },
-  itemHead: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
+  itemHead: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6, gap: 8 },
   itemText: { fontSize: 14, whiteSpace: 'pre-wrap', wordBreak: 'break-word' },
+  proposal: { marginTop: 10, padding: 10, background: COLORS.bg,
+    border: `1px dashed ${COLORS.border}`, borderRadius: 8, fontSize: 13 },
   response: { marginTop: 8, padding: 8, background: COLORS.bg, borderRadius: 8, fontSize: 13 },
+  errBox: { marginTop: 8, padding: 8, background: '#3a1e1e', borderRadius: 8, fontSize: 13, color: COLORS.danger },
+  commitRow: { marginTop: 6, fontSize: 12, fontFamily: 'monospace' },
   itemActions: { display: 'flex', gap: 6, marginTop: 8 },
   smallBtn: { background: 'transparent', color: COLORS.muted, border: `1px solid ${COLORS.border}`,
     borderRadius: 8, padding: '4px 10px', cursor: 'pointer', fontSize: 12 },
   statusPill: { color: '#0a0a14', fontSize: 10, fontWeight: 700, padding: '2px 8px',
     borderRadius: 999, letterSpacing: 0.5, textTransform: 'uppercase' },
+  tierPill: { background: 'transparent', border: '1px solid', fontSize: 10, fontWeight: 600,
+    padding: '2px 8px', borderRadius: 999, letterSpacing: 0.5, textTransform: 'uppercase' },
   muted: { color: COLORS.muted, fontSize: 12 },
   err: { color: COLORS.danger, fontSize: 13 },
   footer: { marginTop: 32, padding: '16px 0', borderTop: `1px solid ${COLORS.border}`,
