@@ -21,9 +21,26 @@ interface DailyViewProps {
   onCreateNew?: (defaults: { date: string; allDay: boolean; startHour?: number; endHour?: number }) => void;
 }
 
-const HOURS = Array.from({ length: 24 }, (_, i) => i);
+const DEFAULT_START_HOUR = 6;  // hide 00:00–05:59 by default
+const DEFAULT_END_HOUR = 22;   // hide 22:00–23:59 by default (exclusive upper bound)
 const HOUR_HEIGHT = 40; // px — fixed row height, needed so bar positions below are simple arithmetic
 const MIN_BAR_HEIGHT = 20; // px — a very short event still needs a clickable/readable bar
+
+// Compute the visible hour range for a day. Defaults trim early morning and
+// late night, but any event overlapping those hours pulls them back in so no
+// event is hidden. `positioned` uses minute-of-day already, so bounds fall
+// out of Math.floor(startMin/60) and Math.ceil(endMin/60).
+function computeVisibleHourRange(positioned: PositionedInstance[]): { start: number; end: number } {
+  let start = DEFAULT_START_HOUR;
+  let end = DEFAULT_END_HOUR;
+  for (const p of positioned) {
+    const sh = Math.floor(p.startMin / 60);
+    const eh = Math.ceil(p.endMin / 60);
+    if (sh < start) start = sh;
+    if (eh > end) end = eh;
+  }
+  return { start: Math.max(0, start), end: Math.min(24, end) };
+}
 
 function formatHour(hour: number): string {
   return `${String(hour).padStart(2, '0')}:00`;
@@ -258,71 +275,77 @@ export function DailyView({
         )}
       </div>
 
-      <div style={{ border: `1px solid ${COLORS.border}`, borderRadius: 6, position: 'relative' }}>
-        {HOURS.map((hour) => {
-          const eventsThisHour = timedByHour[hour] ?? [];
-          return (
-            <div
-              key={hour}
-              onClick={() => {
-                if (eventsThisHour.length === 0) {
-                  onCreateNew?.({ date, allDay: false, startHour: hour, endHour: Math.min(hour + 1, 23) });
-                }
-              }}
-              style={{
-                display: 'flex',
-                borderBottom: hour < 23 ? `1px solid ${COLORS.border}` : 'none',
-                height: HOUR_HEIGHT,
-                boxSizing: 'border-box',
-                cursor: onCreateNew && eventsThisHour.length === 0 ? 'pointer' : 'default',
-              }}
-            >
-              <div style={{ width: 56, flexShrink: 0, padding: '4px 8px', color: COLORS.muted, fontSize: 12 }}>
-                {formatHour(hour)}
-              </div>
-              <div style={{ flex: 1 }} />
-            </div>
-          );
-        })}
-
-        {/* Event bars, positioned by real start/end time rather than confined
-            to their starting hour's row, so a 2-4pm event visibly spans two
-            hours instead of only appearing next to "14:00". timedByHour still
-            buckets by start hour (unchanged, matches interface_contract.md's
-            DayLayout shape) — flattening it back out here is just for
-            rendering position, not a data-shape change. Overlapping events
-            split the width via layoutColumns instead of stacking. */}
-        <div style={{ position: 'absolute', top: 0, left: 56, right: 0, bottom: 0, pointerEvents: 'none' }}>
-          {layoutColumns(HOURS.flatMap((hour) => timedByHour[hour] ?? [])).map(
-            ({ instance, startMin, endMin, column, totalColumns }) => {
-              const top = (startMin / 60) * HOUR_HEIGHT;
-              const height = Math.max(MIN_BAR_HEIGHT, ((endMin - startMin) / 60) * HOUR_HEIGHT);
-              const widthPct = 100 / totalColumns;
-              const leftPct = column * widthPct;
+      {(() => {
+        const positioned = layoutColumns(
+          Object.values(timedByHour).flatMap((arr) => arr ?? []),
+        );
+        const { start: visibleStart, end: visibleEnd } = computeVisibleHourRange(positioned);
+        const visibleHours = Array.from({ length: visibleEnd - visibleStart }, (_, i) => visibleStart + i);
+        return (
+          <div style={{ border: `1px solid ${COLORS.border}`, borderRadius: 6, position: 'relative' }}>
+            {visibleHours.map((hour, idx) => {
+              const eventsThisHour = timedByHour[hour] ?? [];
               return (
                 <div
-                  key={`${instance.sourceEvent.id}-${instance.instanceStartTs}`}
+                  key={hour}
+                  onClick={() => {
+                    if (eventsThisHour.length === 0) {
+                      onCreateNew?.({ date, allDay: false, startHour: hour, endHour: Math.min(hour + 1, 23) });
+                    }
+                  }}
                   style={{
-                    position: 'absolute',
-                    top,
-                    height,
-                    left: `calc(${leftPct}% + 2px)`,
-                    width: `calc(${widthPct}% - 4px)`,
-                    pointerEvents: 'auto',
+                    display: 'flex',
+                    borderBottom: idx < visibleHours.length - 1 ? `1px solid ${COLORS.border}` : 'none',
+                    height: HOUR_HEIGHT,
+                    boxSizing: 'border-box',
+                    cursor: onCreateNew && eventsThisHour.length === 0 ? 'pointer' : 'default',
                   }}
                 >
-                  <EventChip
-                    instance={instance}
-                    hasConflict={totalColumns > 1}
-                    onClick={() => onSelectInstance?.(instance)}
-                    style={{ height: '100%', marginBottom: 0 }}
-                  />
+                  <div style={{ width: 56, flexShrink: 0, padding: '4px 8px', color: COLORS.muted, fontSize: 12 }}>
+                    {formatHour(hour)}
+                  </div>
+                  <div style={{ flex: 1 }} />
                 </div>
               );
-            },
-          )}
-        </div>
-      </div>
+            })}
+
+            {/* Event bars, positioned by real start/end time rather than confined
+                to their starting hour's row, so a 2-4pm event visibly spans two
+                hours instead of only appearing next to "14:00". `top` is offset
+                by visibleStart so trimmed hours don't leave phantom space above.
+                Overlapping events split the width via layoutColumns instead of
+                stacking. */}
+            <div style={{ position: 'absolute', top: 0, left: 56, right: 0, bottom: 0, pointerEvents: 'none' }}>
+              {positioned.map(({ instance, startMin, endMin, column, totalColumns }) => {
+                const top = (startMin / 60 - visibleStart) * HOUR_HEIGHT;
+                const height = Math.max(MIN_BAR_HEIGHT, ((endMin - startMin) / 60) * HOUR_HEIGHT);
+                const widthPct = 100 / totalColumns;
+                const leftPct = column * widthPct;
+                return (
+                  <div
+                    key={`${instance.sourceEvent.id}-${instance.instanceStartTs}`}
+                    style={{
+                      position: 'absolute',
+                      top,
+                      height,
+                      left: `calc(${leftPct}% + 2px)`,
+                      width: `calc(${widthPct}% - 4px)`,
+                      pointerEvents: 'auto',
+                    }}
+                  >
+                    <EventChip
+                      instance={instance}
+                      hasConflict={totalColumns > 1}
+                      onClick={() => onSelectInstance?.(instance)}
+                      style={{ height: '100%', marginBottom: 0 }}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

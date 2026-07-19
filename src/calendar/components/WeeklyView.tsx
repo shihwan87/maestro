@@ -27,7 +27,8 @@ interface WeeklyViewProps {
   onCreateNew?: (defaults: { date: string; allDay: boolean; startHour?: number; endHour?: number }) => void;
 }
 
-const HOURS = Array.from({ length: 24 }, (_, i) => i);
+const DEFAULT_START_HOUR = 6;  // hide 00:00–05:59 by default
+const DEFAULT_END_HOUR = 22;   // hide 22:00–23:59 by default (exclusive upper bound)
 const HOUR_HEIGHT = 32; // px — a bit tighter than DailyView's 40 to fit 24h + 7 cols on one screen
 const MIN_BAR_HEIGHT = 16;
 const ALL_DAY_BAR_HEIGHT = 20;
@@ -184,6 +185,28 @@ function WeekGrid({ weekStart, layout, holidayDates, onSelectInstance, onCreateN
   const todayStr = localDateStr(new Date().toISOString());
   const weekStartYear = new Date(`${weekStart}T00:00:00`).getFullYear();
 
+  // Dynamic visible hour range: default 6..21, extended by any event that
+  // starts before 6 or ends after 22 on ANY day this week. Union across all
+  // 7 columns keeps rows aligned horizontally (each day column sees the
+  // same clock, or the layout would look ragged).
+  let visibleStart = DEFAULT_START_HOUR;
+  let visibleEnd = DEFAULT_END_HOUR;
+  for (const d of days) {
+    const timedForDay = layout.timedByDay[d] ?? [];
+    for (const inst of timedForDay) {
+      const startMin = minutesOfDay(inst.instanceStartTs);
+      const endMinRaw = minutesOfDay(inst.instanceEndTs);
+      const endMin = endMinRaw > startMin ? endMinRaw : startMin + 30;
+      const sh = Math.floor(startMin / 60);
+      const eh = Math.ceil(endMin / 60);
+      if (sh < visibleStart) visibleStart = sh;
+      if (eh > visibleEnd) visibleEnd = eh;
+    }
+  }
+  visibleStart = Math.max(0, visibleStart);
+  visibleEnd = Math.min(24, visibleEnd);
+  const visibleHours = Array.from({ length: visibleEnd - visibleStart }, (_, i) => visibleStart + i);
+
   return (
     <div style={{ border: `1px solid ${COLORS.border}`, borderRadius: 6, overflow: 'hidden' }}>
       {/* Column headers: one line per day — "M/D (요)" or "'YY/M/D (요)" at year boundary. */}
@@ -310,10 +333,12 @@ function WeekGrid({ weekStart, layout, holidayDates, onSelectInstance, onCreateN
 
       {/* Hourly grid: hour-label gutter, then 7 day columns. Timed events are
           absolutely positioned per day; clicking an empty area of a day-column
-          opens the create modal at that day. */}
+          opens the create modal at that day. Hour range is trimmed to
+          visibleHours (see visibleStart/End above) so pre-dawn and late-night
+          empty rows disappear unless an event forces them back in. */}
       <div style={{ display: 'flex', position: 'relative' }}>
         <div style={{ width: dayLabelWidth, flexShrink: 0 }}>
-          {HOURS.map((hour) => (
+          {visibleHours.map((hour, idx) => (
             <div
               key={hour}
               style={{
@@ -322,7 +347,7 @@ function WeekGrid({ weekStart, layout, holidayDates, onSelectInstance, onCreateN
                 color: COLORS.muted,
                 fontSize: 10,
                 textAlign: 'right',
-                borderBottom: hour < 23 ? `1px solid ${COLORS.border}` : 'none',
+                borderBottom: idx < visibleHours.length - 1 ? `1px solid ${COLORS.border}` : 'none',
                 boxSizing: 'border-box',
               }}
             >
@@ -340,7 +365,8 @@ function WeekGrid({ weekStart, layout, holidayDates, onSelectInstance, onCreateN
               onClick={(e) => {
                 const rect = e.currentTarget.getBoundingClientRect();
                 const y = e.clientY - rect.top;
-                const h = Math.max(0, Math.min(23, Math.floor(y / HOUR_HEIGHT)));
+                const rowIdx = Math.max(0, Math.min(visibleHours.length - 1, Math.floor(y / HOUR_HEIGHT)));
+                const h = visibleStart + rowIdx;
                 onCreateNew?.({ date: d, allDay: false, startHour: h, endHour: Math.min(h + 1, 23) });
               }}
               style={{
@@ -351,12 +377,12 @@ function WeekGrid({ weekStart, layout, holidayDates, onSelectInstance, onCreateN
               }}
             >
               {/* Empty hour rows for grid lines. */}
-              {HOURS.map((hour) => (
+              {visibleHours.map((hour, idx) => (
                 <div
                   key={hour}
                   style={{
                     height: HOUR_HEIGHT,
-                    borderBottom: hour < 23 ? `1px solid ${COLORS.border}` : 'none',
+                    borderBottom: idx < visibleHours.length - 1 ? `1px solid ${COLORS.border}` : 'none',
                     boxSizing: 'border-box',
                   }}
                 />
@@ -370,7 +396,7 @@ function WeekGrid({ weekStart, layout, holidayDates, onSelectInstance, onCreateN
                   const event = instance.sourceEvent;
                   const color = event.color_override ?? CATEGORY_COLOR[event.category];
                   const textColor = textOnColor(color);
-                  const top = (startMin / 60) * HOUR_HEIGHT;
+                  const top = (startMin / 60 - visibleStart) * HOUR_HEIGHT;
                   const height = Math.max(
                     MIN_BAR_HEIGHT,
                     ((endMin - startMin) / 60) * HOUR_HEIGHT,

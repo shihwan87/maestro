@@ -410,26 +410,13 @@ export default function CalendarApp() {
         </div>
       )}
       <>
-          <header
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: '12px 16px',
-              borderBottom: `1px solid ${COLORS.border}`,
-            }}
-          >
-            <h1 style={{ fontSize: 16, margin: 0 }}>Calendar</h1>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <SyncButton onSyncComplete={handleSyncComplete} />
-            </div>
-          </header>
           <TabBar tab={tab} onChange={setTab} />
           <DateNav
             tab={tab}
             date={date}
             onShift={(delta) => setDate((d) => shiftDate(d, delta))}
             onToday={() => setDate(todayDateStr())}
+            onSyncComplete={handleSyncComplete}
           />
           {tab === 'daily' && (
             <DailyView
@@ -463,11 +450,18 @@ export default function CalendarApp() {
 
 function TabBar({ tab, onChange }: { tab: Tab; onChange: (t: Tab) => void }) {
   const tabs: Array<{ id: Tab; label: string }> = [
-    { id: 'daily', label: 'Daily' },
-    { id: 'weekly', label: 'Weekly' },
+    { id: 'daily', label: 'DAILY' },
+    { id: 'weekly', label: 'WEEKLY' },
   ];
   return (
-    <div style={{ display: 'flex', borderBottom: `1px solid ${COLORS.border}` }}>
+    <nav
+      style={{
+        display: 'flex',
+        justifyContent: 'space-around',
+        background: COLORS.card,
+        borderBottom: `1px solid ${COLORS.border}`,
+      }}
+    >
       {tabs.map((t) => {
         const active = t.id === tab;
         return (
@@ -476,21 +470,22 @@ function TabBar({ tab, onChange }: { tab: Tab; onChange: (t: Tab) => void }) {
             onClick={() => onChange(t.id)}
             style={{
               flex: 1,
-              padding: '10px 12px',
-              background: active ? COLORS.cardHover : 'none',
-              border: 'none',
+              background: 'transparent',
+              border: 0,
               borderBottom: active ? `2px solid ${COLORS.primary}` : '2px solid transparent',
-              color: active ? COLORS.text : COLORS.muted,
+              padding: '14px 8px',
+              fontSize: 12,
+              fontWeight: 700,
+              letterSpacing: 0.5,
+              color: active ? COLORS.primary : COLORS.muted,
               cursor: 'pointer',
-              fontSize: 13,
-              fontWeight: active ? 600 : 400,
             }}
           >
             {t.label}
           </button>
         );
       })}
-    </div>
+    </nav>
   );
 }
 
@@ -499,11 +494,13 @@ function DateNav({
   date,
   onShift,
   onToday,
+  onSyncComplete,
 }: {
   tab: Tab;
   date: string;
   onShift: (delta: number) => void;
   onToday: () => void;
+  onSyncComplete: (results: SyncResult[]) => void;
 }) {
   const step = tab === 'daily' ? 1 : 7;
   return (
@@ -536,9 +533,12 @@ function DateNav({
           ? formatDailyHeader(date)
           : `Week ${isoWeek(shiftDate(sundayOfWeek(date), 1))}`}
       </div>
-      <button onClick={onToday} style={navBtnStyle}>
-        Today
-      </button>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <SyncButton onSyncComplete={onSyncComplete} />
+        <button onClick={onToday} style={navBtnStyle}>
+          Today
+        </button>
+      </div>
     </div>
   );
 }

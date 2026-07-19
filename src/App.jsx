@@ -11,30 +11,41 @@ const CalendarApp = lazy(() => import('./calendar/CalendarApp'))
 const TOP_TAB_KEY = 'maestro.topTab'
 const SUB_TAB_KEY = 'maestro.activeTab'
 
+const VALID_TOP_TABS = ['tasks', 'calendar', 'config']
+const VALID_SUB_TABS = ['work', 'personal']
+
 export default function App() {
-  const [topTab, setTopTab] = useState(() => sessionStorage.getItem(TOP_TAB_KEY) || 'tasks')
-  const [subTab, setSubTab] = useState(() => sessionStorage.getItem(SUB_TAB_KEY) || 'work')
+  const [topTab, setTopTab] = useState(() => {
+    const saved = sessionStorage.getItem(TOP_TAB_KEY)
+    return VALID_TOP_TABS.includes(saved) ? saved : 'tasks'
+  })
+  const [subTab, setSubTab] = useState(() => {
+    const saved = sessionStorage.getItem(SUB_TAB_KEY)
+    return VALID_SUB_TABS.includes(saved) ? saved : 'work'
+  })
   const markers = useTabMarkers()
 
   useEffect(() => { sessionStorage.setItem(TOP_TAB_KEY, topTab) }, [topTab])
   useEffect(() => { sessionStorage.setItem(SUB_TAB_KEY, subTab) }, [subTab])
 
-  const tabMarkers = {
+  const subMarkers = {
     work:     markerFor(markers.work.minDays),
     personal: markerFor(markers.personal.minDays),
-    config:   markers.openRequests > 0 ? 'bang' : null,
+  }
+
+  const topMarkers = {
+    config: markers.openRequests > 0 ? 'bang' : null,
   }
 
   return (
     <PinGate>
-      <TopTabBar active={topTab} onChange={setTopTab} />
+      <TopTabBar active={topTab} onChange={setTopTab} markers={topMarkers} />
       {topTab === 'tasks' && (
         <div style={{ paddingTop: 48 }}>
-          <TabBar active={subTab} onChange={setSubTab} markers={tabMarkers} />
+          <TabBar active={subTab} onChange={setSubTab} markers={subMarkers} />
           <div style={{ paddingTop: 60 }}>
             {subTab === 'work'     && <Dashboard scope="work"     title="Work"     itemNoun="Project" />}
             {subTab === 'personal' && <Dashboard scope="personal" title="Personal" itemNoun="Item" />}
-            {subTab === 'config'   && <ConfigTab />}
           </div>
         </div>
       )}
@@ -45,25 +56,34 @@ export default function App() {
           </Suspense>
         </div>
       )}
+      {topTab === 'config' && (
+        <div style={{ paddingTop: 48 }}>
+          <ConfigTab />
+        </div>
+      )}
     </PinGate>
   )
 }
 
-function TopTabBar({ active, onChange }) {
+function TopTabBar({ active, onChange, markers = {} }) {
   const tabs = [
     { id: 'tasks',    label: 'TASKS' },
     { id: 'calendar', label: 'CALENDAR' },
+    { id: 'config',   label: 'CONFIG' },
   ]
   return (
     <nav style={topBarStyle} className="safe-top">
       {tabs.map(t => {
         const on = active === t.id
+        const marker = markers[t.id]
+        const urgentColor = marker === 'star' ? COLORS.danger : marker === 'bang' ? COLORS.warn : null
+        const label = marker === 'star' ? `☆ ${t.label} ☆` : marker === 'bang' ? `! ${t.label} !` : t.label
         return (
           <button key={t.id} onClick={() => onChange(t.id)} style={{
             ...topBtnStyle,
-            color: on ? COLORS.primary : COLORS.muted,
+            color: on ? COLORS.primary : (urgentColor || COLORS.muted),
             borderBottom: on ? `2px solid ${COLORS.primary}` : '2px solid transparent',
-          }}>{t.label}</button>
+          }}>{label}</button>
         )
       })}
     </nav>
