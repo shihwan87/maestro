@@ -384,66 +384,66 @@ export default function CalendarApp() {
 
   return (
     <div>
-      {googleAuthBanner === 'connected' && (
-        <p style={{ background: '#1e3a2e', padding: 8, textAlign: 'center' }}>Google Calendar connected.</p>
-      )}
-      {googleAuthBanner === 'denied' && (
-        <p style={{ background: '#3a2e1e', padding: 8, textAlign: 'center' }}>Google connection was cancelled.</p>
-      )}
-      {googleAuthBanner === 'error' && (
-        <p style={{ background: '#3a1e1e', padding: 8, textAlign: 'center' }}>Google connection failed — try again.</p>
-      )}
-      {syncErrors.length > 0 && (
-        <div style={{ background: '#3a1e1e', padding: '8px 16px', display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-          <div style={{ flex: 1, fontSize: 13, color: COLORS.danger }}>
-            <strong>Sync errors</strong>
-            {syncErrors.map((msg) => (
-              <p key={msg} style={{ margin: '4px 0 0' }}>{msg}</p>
-            ))}
+      <TabBar tab={tab} onChange={setTab} />
+      <div style={{ paddingTop: 60 }}>
+        {googleAuthBanner === 'connected' && (
+          <p style={{ background: '#1e3a2e', padding: 8, textAlign: 'center' }}>Google Calendar connected.</p>
+        )}
+        {googleAuthBanner === 'denied' && (
+          <p style={{ background: '#3a2e1e', padding: 8, textAlign: 'center' }}>Google connection was cancelled.</p>
+        )}
+        {googleAuthBanner === 'error' && (
+          <p style={{ background: '#3a1e1e', padding: 8, textAlign: 'center' }}>Google connection failed — try again.</p>
+        )}
+        {syncErrors.length > 0 && (
+          <div style={{ background: '#3a1e1e', padding: '8px 16px', display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+            <div style={{ flex: 1, fontSize: 13, color: COLORS.danger }}>
+              <strong>Sync errors</strong>
+              {syncErrors.map((msg) => (
+                <p key={msg} style={{ margin: '4px 0 0' }}>{msg}</p>
+              ))}
+            </div>
+            <button
+              onClick={() => setSyncErrors([])}
+              style={{ background: 'none', border: 'none', color: COLORS.muted, cursor: 'pointer', fontSize: 16, padding: 0 }}
+            >
+              ✕
+            </button>
           </div>
-          <button
-            onClick={() => setSyncErrors([])}
-            style={{ background: 'none', border: 'none', color: COLORS.muted, cursor: 'pointer', fontSize: 16, padding: 0 }}
-          >
-            ✕
-          </button>
-        </div>
-      )}
-      <>
-          <TabBar tab={tab} onChange={setTab} />
-          <DateNav
-            tab={tab}
+        )}
+        <DateNav
+          tab={tab}
+          date={date}
+          onShift={(delta) => setDate((d) => shiftDate(d, delta))}
+          onToday={() => setDate(todayDateStr())}
+          onSyncComplete={handleSyncComplete}
+        />
+        {tab === 'daily' && (
+          <DailyView
+            key={`daily-${date}-${refreshKey}`}
             date={date}
-            onShift={(delta) => setDate((d) => shiftDate(d, delta))}
-            onToday={() => setDate(todayDateStr())}
-            onSyncComplete={handleSyncComplete}
+            onSelectInstance={openView}
+            onCreateNew={openCreate}
           />
-          {tab === 'daily' && (
-            <DailyView
-              key={`daily-${date}-${refreshKey}`}
-              date={date}
-              onSelectInstance={openView}
-              onCreateNew={openCreate}
-            />
-          )}
-          {tab === 'weekly' && (
-            <WeeklyView
-              key={`weekly-${sundayOfWeek(date)}-${refreshKey}`}
-              weekStart={sundayOfWeek(date)}
-              onSelectInstance={openView}
-              onCreateNew={openCreate}
-            />
-          )}
-          <EventDetail
-            mode={detailMode}
-            instance={selectedInstance}
-            createDefaults={createDefaults}
-            onClose={closeDetail}
-            onSaved={handleSaved}
-            onDeleted={handleDeleted}
-            onEdit={() => setDetailMode('edit')}
+        )}
+        {tab === 'weekly' && (
+          <WeeklyView
+            key={`weekly-${sundayOfWeek(date)}-${refreshKey}`}
+            weekStart={sundayOfWeek(date)}
+            onSelectInstance={openView}
+            onCreateNew={openCreate}
           />
-        </>
+        )}
+        <EventDetail
+          mode={detailMode}
+          instance={selectedInstance}
+          createDefaults={createDefaults}
+          onClose={closeDetail}
+          onSaved={handleSaved}
+          onDeleted={handleDeleted}
+          onEdit={() => setDetailMode('edit')}
+        />
+      </div>
     </div>
   );
 }
@@ -455,11 +455,17 @@ function TabBar({ tab, onChange }: { tab: Tab; onChange: (t: Tab) => void }) {
   ];
   return (
     <nav
+      className="safe-top"
       style={{
+        position: 'fixed',
+        left: 0,
+        right: 0,
+        top: 48,
         display: 'flex',
         justifyContent: 'space-around',
         background: COLORS.card,
         borderBottom: `1px solid ${COLORS.border}`,
+        zIndex: 50,
       }}
     >
       {tabs.map((t) => {
