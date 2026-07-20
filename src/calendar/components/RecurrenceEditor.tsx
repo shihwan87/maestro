@@ -48,8 +48,23 @@ function defaultState(): EditorState {
     byDay: [...WEEKDAY_CODES],
     interval: 1,
     customUnit: 'DAILY',
-    until: null,
+    until: nextSemesterEnd(),
   };
+}
+
+// Nearest strictly-future semester boundary: Aug 31 or Feb 28 of whichever
+// year comes first. On the boundary day itself, jumps to the other boundary.
+function nextSemesterEnd(): string {
+  const today = new Date();
+  const y = today.getFullYear();
+  const candidates = [
+    new Date(y, 1, 28),   // Feb 28 this year
+    new Date(y, 7, 31),   // Aug 31 this year
+    new Date(y + 1, 1, 28), // Feb 28 next year (fallback when both above are past)
+  ].filter((d) => d.getTime() > today.getTime());
+  candidates.sort((a, b) => a.getTime() - b.getTime());
+  const pick = candidates[0];
+  return `${pick.getFullYear()}-${String(pick.getMonth() + 1).padStart(2, '0')}-${String(pick.getDate()).padStart(2, '0')}`;
 }
 
 // UNTIL in RFC 5545 must match DTSTART's value type. To cover both all-day
