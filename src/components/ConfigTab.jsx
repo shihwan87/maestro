@@ -68,10 +68,32 @@ export function ConfigTab() {
   const commit  = import.meta.env.VITE_COMMIT_SHA || 'dev'
   const repoUrl = 'https://github.com/shihwan87/maestro/blob/main/full_dev_plan.md'
 
+  // Hard refresh: unregister service workers and clear caches so the next
+  // load pulls the freshest deployed bundle instead of a stale PWA copy.
+  const hardRefresh = async () => {
+    try {
+      if ('serviceWorker' in navigator) {
+        const regs = await navigator.serviceWorker.getRegistrations()
+        await Promise.all(regs.map(r => r.unregister()))
+      }
+      if ('caches' in window) {
+        const keys = await caches.keys()
+        await Promise.all(keys.map(k => caches.delete(k)))
+      }
+    } finally {
+      window.location.reload()
+    }
+  }
+
   return (
     <div style={S.page} className="safe-top">
       <header style={S.header}>
-        <h1 style={S.h1}>Config</h1>
+        <div style={S.headerRow}>
+          <h1 style={S.h1}>Requests to Claude</h1>
+          <button type="button" onClick={hardRefresh} style={S.refresh} title="Clear PWA cache and reload">
+            ↻ Hard refresh
+          </button>
+        </div>
         <p style={S.sub}>Send a request to Claude. The agent proposes a plan; you approve here.</p>
       </header>
 
@@ -171,7 +193,11 @@ const S = {
   page: { minHeight: '100vh', background: COLORS.bg, color: COLORS.text,
     paddingLeft: 20, paddingRight: 20, maxWidth: 800, margin: '0 auto' },
   header: { marginBottom: 16 },
+  headerRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 },
   h1: { fontSize: 22, fontWeight: 700, margin: 0 },
+  refresh: { background: 'transparent', color: COLORS.muted, border: `1px solid ${COLORS.border}`,
+    borderRadius: 8, padding: '6px 10px', cursor: 'pointer', fontSize: 12, fontWeight: 600,
+    whiteSpace: 'nowrap' },
   sub: { color: COLORS.muted, fontSize: 13, margin: '4px 0 0' },
   h2: { fontSize: 14, fontWeight: 600, color: COLORS.muted, margin: '24px 0 8px' },
   form: { display: 'flex', flexDirection: 'column', gap: 8 },
