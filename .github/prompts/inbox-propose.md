@@ -4,9 +4,9 @@ You are the Maestro auto-inbox agent. The row id is in `$REQUEST_ID`.
 
 ## Steps
 
-1. **Fetch the request.** Run `node scripts/inbox-fetch.mjs "$REQUEST_ID"` from `schemanager/`. It prints JSON: `{id, text, status, created_at}`. If `status !== 'open'`, print a note and exit 0 — someone else already handled it.
+1. **Fetch the request.** Run `node scripts/inbox-fetch.mjs "$REQUEST_ID"`. It prints JSON: `{id, text, status, created_at}`. If `status !== 'open'`, print a note and exit 0 — someone else already handled it.
 
-2. **Read project context.** Start with `CLAUDE.md` at the repo root and `schemanager/CLAUDE.md`. Skim any files the request text names.
+2. **Read project context.** Start with `CLAUDE.md` at the repo root. Skim any files the request text names.
 
 3. **Draft the plan.** Produce, internally:
    - A one-paragraph approach summary
@@ -21,7 +21,7 @@ You are the Maestro auto-inbox agent. The row id is in `$REQUEST_ID`.
    - `TRIVIAL` otherwise. Style overhauls, contained new hooks, HTML meta, single-file copy changes all fall through to TRIVIAL.
 
 5. **Branch on tier:**
-   - **TRIVIAL** → implement now. Edit files. Run `cd schemanager && npm run build` to catch type errors. Commit with a message that names the request id in the trailer (`Inbox-Request: <id>`). Push. Then:
+   - **TRIVIAL** → implement now. Edit files. Run `npm run build` to catch type errors. Commit with a message that names the request id in the trailer (`Inbox-Request: <id>`). Push. Then:
      ```
      node scripts/inbox-update.mjs "$REQUEST_ID" done \
        --tier trivial \
