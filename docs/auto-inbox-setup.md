@@ -48,9 +48,8 @@ Supabase's webhook needs to trigger `repository_dispatch` on the maestro repo. G
 - Resource owner: `shihwan87`
 - Repository access: **Only select repositories** → `maestro`
 - Repository permissions:
-  - Contents: Read
+  - **Contents: Read and write** ← required by the `repository_dispatch` REST endpoint (GitHub docs are misleading on this; Actions:write alone returns 403)
   - Metadata: Read (auto)
-  - **Actions: Read and write** (this is the one that grants dispatch)
 - Expiration: 1 year
 
 Copy the token — you paste it into Supabase in the next step.
