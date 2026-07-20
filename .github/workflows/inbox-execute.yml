@@ -55,6 +55,7 @@ jobs:
             environment variable.
           claude_args: |
             --allowedTools "Read,Write,Edit,Grep,Glob,Bash"
+            --max-turns 30
         env:
           REQUEST_ID: ${{ github.event.client_payload.request_id || inputs.request_id }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -66,4 +67,4 @@ jobs:
           REQUEST_ID: ${{ github.event.client_payload.request_id || inputs.request_id }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
-        run: node scripts/inbox-update.mjs "$REQUEST_ID" failed "Execute step errored — see workflow run ${{ github.run_id }}"
+        run: node scripts/inbox-update.mjs "$REQUEST_ID" failed --error "Execute step errored — see workflow run ${{ github.run_id }}" --run "${{ github.run_id }}"
