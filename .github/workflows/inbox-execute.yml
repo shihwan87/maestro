@@ -48,8 +48,12 @@ jobs:
       - uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          allowed_tools: "Read,Write,Edit,Grep,Glob,Bash"
-          prompt_file: .github/prompts/inbox-execute.md
+          prompt: |
+            Follow the runbook at .github/prompts/inbox-execute.md exactly,
+            step by step. The claude_requests row id is in the $REQUEST_ID
+            environment variable.
+          claude_args: |
+            --allowedTools "Read,Write,Edit,Grep,Glob,Bash"
         env:
           REQUEST_ID: ${{ github.event.client_payload.request_id || inputs.request_id }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
