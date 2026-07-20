@@ -44,6 +44,6 @@ const S = {
     background: COLORS.card, borderBottom: `1px solid ${COLORS.border}`,
     zIndex: 50 },
   btn: { flex: 1, background: 'transparent', border: 0,
-    padding: '14px 8px', fontSize: 12, fontWeight: 700, letterSpacing: 0.5,
+    padding: '12px 8px', fontSize: 13, fontWeight: 700, letterSpacing: 0.5,
     cursor: 'pointer' },
 }
