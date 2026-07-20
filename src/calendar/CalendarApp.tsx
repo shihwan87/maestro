@@ -455,12 +455,11 @@ function TabBar({ tab, onChange }: { tab: Tab; onChange: (t: Tab) => void }) {
   ];
   return (
     <nav
-      className="safe-top"
       style={{
         position: 'fixed',
         left: 0,
         right: 0,
-        top: 48,
+        top: 'calc(48px + env(safe-area-inset-top, 0px))',
         display: 'flex',
         justifyContent: 'space-around',
         background: COLORS.card,

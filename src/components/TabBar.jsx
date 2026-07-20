@@ -20,7 +20,7 @@ const MARKER_COLOR = {
 
 export function TabBar({ active, onChange, markers = {} }) {
   return (
-    <nav style={S.bar} className="safe-top">
+    <nav style={S.bar}>
       {TABS.map(t => {
         const on = active === t.id
         const marker = markers[t.id]
@@ -38,7 +38,8 @@ export function TabBar({ active, onChange, markers = {} }) {
 }
 
 const S = {
-  bar: { position: 'fixed', left: 0, right: 0, top: 48,
+  bar: { position: 'fixed', left: 0, right: 0,
+    top: 'calc(48px + env(safe-area-inset-top, 0px))',
     display: 'flex', justifyContent: 'space-around',
     background: COLORS.card, borderBottom: `1px solid ${COLORS.border}`,
     zIndex: 50 },

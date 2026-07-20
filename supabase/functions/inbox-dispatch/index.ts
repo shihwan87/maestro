@@ -77,23 +77,39 @@ Deno.serve(async (req) => {
   let payload: DatabaseWebhookPayload<ClaudeRequestRow>;
   try {
     payload = await req.json();
-  } catch {
+  } catch (err) {
+    console.error('[inbox-dispatch] JSON parse failed', err);
     await logError('Invalid JSON body');
     return new Response('ok', { status: 200, headers: corsHeaders });
   }
 
+  console.log('[inbox-dispatch] received', {
+    type: payload.type,
+    table: payload.table,
+    record_status: payload.record?.status,
+    record_id: payload.record?.id,
+    old_status: payload.old_record?.status,
+    has_pat: !!Deno.env.get('GITHUB_PAT'),
+  });
+
   try {
     if (payload.type === 'INSERT' && payload.record?.status === 'open') {
+      console.log('[inbox-dispatch] dispatching inbox-new for', payload.record.id);
       await fireGitHub('inbox-new', payload.record.id);
+      console.log('[inbox-dispatch] inbox-new dispatch OK');
     } else if (
       payload.type === 'UPDATE' &&
       payload.record?.status === 'executing' &&
       payload.old_record?.status !== 'executing'
     ) {
+      console.log('[inbox-dispatch] dispatching inbox-approved for', payload.record.id);
       await fireGitHub('inbox-approved', payload.record.id);
+      console.log('[inbox-dispatch] inbox-approved dispatch OK');
+    } else {
+      console.log('[inbox-dispatch] no-op (criteria not met)');
     }
-    // All other cases are ignored (dismissed, retries, proposal writes, etc.).
   } catch (err) {
+    console.error('[inbox-dispatch] fireGitHub threw', err);
     await logError(err instanceof Error ? err.message : String(err));
   }
 

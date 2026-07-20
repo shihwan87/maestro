@@ -3,6 +3,6 @@ html, body, #root { margin: 0; padding: 0; min-height: 100%; }
 html { -webkit-text-size-adjust: 100%; touch-action: manipulation; }
 body { background: #0a0a14; color: #e6e7ee; font-family: Inter, system-ui, sans-serif;
   touch-action: manipulation; }
-.safe-top { padding-top: 65px; }
+.safe-top { padding-top: env(safe-area-inset-top, 0px); }
 .safe-bottom { padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 60px); }
 input, select, button { font-family: inherit; }

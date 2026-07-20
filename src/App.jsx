@@ -41,7 +41,7 @@ export default function App() {
     <PinGate>
       <TopTabBar active={topTab} onChange={setTopTab} markers={topMarkers} />
       {topTab === 'tasks' && (
-        <div style={{ paddingTop: 48 }}>
+        <div style={{ paddingTop: 'calc(48px + env(safe-area-inset-top, 0px))' }}>
           <TabBar active={subTab} onChange={setSubTab} markers={subMarkers} />
           <div style={{ paddingTop: 60 }}>
             {subTab === 'work'     && <Dashboard scope="work"     title="Work"     itemNoun="Project" />}
@@ -50,14 +50,14 @@ export default function App() {
         </div>
       )}
       {topTab === 'calendar' && (
-        <div style={{ paddingTop: 48 }}>
+        <div style={{ paddingTop: 'calc(48px + env(safe-area-inset-top, 0px))' }}>
           <Suspense fallback={<p style={{ color: COLORS.muted, padding: 16 }}>Loading calendar…</p>}>
             <CalendarApp />
           </Suspense>
         </div>
       )}
       {topTab === 'config' && (
-        <div style={{ paddingTop: 48 }}>
+        <div style={{ paddingTop: 'calc(48px + env(safe-area-inset-top, 0px))' }}>
           <ConfigTab />
         </div>
       )}
