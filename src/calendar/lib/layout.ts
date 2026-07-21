@@ -30,15 +30,22 @@ function addDays(date: string, days: number): string {
 
 // Google Calendar (and the RFC 5545 iCal spec) store all-day events with an
 // EXCLUSIVE end date — a one-day event on 2026-07-13 arrives as start=07-13,
-// end=07-14. The importer preserves that shape in sched_events. When
-// deciding which day columns to render an all-day bar on, we want the
-// INCLUSIVE last covered date instead — otherwise every all-day event
-// spans one extra day. Only applies when `all_day=true`; timed events that
-// happen to cross midnight (23:00-01:00 the next day) really do cover two
-// dates.
+// end=07-14. The importer preserves that shape in sched_events for
+// `imported`/`holiday` sourced rows. When deciding which day columns to
+// render an all-day bar on, we want the INCLUSIVE last covered date instead
+// — otherwise every all-day event spans one extra day.
+// `app`-sourced all-day events do NOT follow that convention: exporter.ts's
+// allDayRange() stores start_ts/end_ts as 00:00:00/23:59:59 of the SAME
+// calendar day (already inclusive), so subtracting a day here would push
+// end before start and either vanish the event (layoutDay's date-range
+// check) or render a zero/negative-width bar (layoutWeek). Only apply the
+// exclusive-end adjustment to non-`app` sources. Timed events that happen
+// to cross midnight (23:00-01:00 the next day) really do cover two dates
+// and are unaffected (all_day is false for those).
 function inclusiveEndDate(instance: EventInstance): string {
   const endDate = localDateStr(instance.instanceEndTs);
   if (!instance.sourceEvent.all_day) return endDate;
+  if (instance.sourceEvent.source === 'app') return endDate;
   return addDays(endDate, -1);
 }
 
