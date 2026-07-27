@@ -29,7 +29,8 @@ export function TabBar({ active, onChange, markers = {} }) {
           <button key={t.id} onClick={() => onChange(t.id)} style={{
             ...S.btn,
             color: on ? COLORS.primary : (urgentColor || COLORS.muted),
-            borderBottom: on ? `2px solid ${COLORS.primary}` : '2px solid transparent',
+            border: `1px solid ${COLORS.border}`,
+            borderBottom: on ? `2px solid ${COLORS.primary}` : `1px solid ${COLORS.border}`,
           }}>{decorate(t.label, marker)}</button>
         )
       })}
@@ -43,7 +44,8 @@ const S = {
     display: 'flex', justifyContent: 'space-around',
     background: COLORS.card, borderBottom: `1px solid ${COLORS.border}`,
     zIndex: 50 },
-  btn: { flex: 1, background: 'transparent', border: 0,
-    padding: '12px 8px', fontSize: 13, fontWeight: 700, letterSpacing: 0.5,
+  btn: { flex: 1, background: 'transparent',
+    margin: '4px 4px 0', borderRadius: 8,
+    padding: '10px 8px', fontSize: 13, fontWeight: 700, letterSpacing: 0.5,
     cursor: 'pointer' },
 }

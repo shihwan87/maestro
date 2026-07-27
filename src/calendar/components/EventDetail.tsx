@@ -16,8 +16,9 @@
 import { useEffect, useState } from 'react';
 import type { DeleteScope, EventInstance, NewEventInput, SchedEvent } from '../lib/types';
 import { createEvent, createOverride, deleteEvent, editFutureEvents, pushEvent, unpushEvent, updateEvent } from '../lib/api';
-import { CATEGORY_COLOR, COLORS, PALETTE } from '../../styles/theme';
+import { CATEGORY_COLOR, COLORS } from '../../styles/theme';
 import { RecurrenceEditor } from './RecurrenceEditor';
+import { ColorPicker } from '../../components/ColorPicker';
 
 export type EventDetailMode = 'closed' | 'view' | 'edit' | 'create';
 
@@ -668,43 +669,15 @@ function TimeInput({ value, onChange }: { value: string; onChange: (v: string) =
 function ColorSwatchPicker({
   value,
   onChange,
-  disabled,
 }: {
   value: string | null;
   onChange: (color: string | null) => void;
   disabled?: boolean;
 }) {
   return (
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center', margin: '4px 0 8px' }}>
-      <span style={{ color: COLORS.muted, fontSize: 12, marginRight: 4 }}>Color:</span>
-      <button
-        onClick={() => onChange(null)}
-        disabled={disabled}
-        title="Use category color"
-        style={{
-          width: 20,
-          height: 20,
-          borderRadius: '50%',
-          border: value === null ? `2px solid ${COLORS.text}` : `1px solid ${COLORS.border}`,
-          background: 'none',
-          cursor: 'pointer',
-        }}
-      />
-      {PALETTE.map((swatch) => (
-        <button
-          key={swatch}
-          onClick={() => onChange(swatch)}
-          disabled={disabled}
-          style={{
-            width: 20,
-            height: 20,
-            borderRadius: '50%',
-            background: swatch,
-            border: value === swatch ? `2px solid ${COLORS.text}` : '1px solid transparent',
-            cursor: 'pointer',
-          }}
-        />
-      ))}
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '4px 0 8px' }}>
+      <span style={{ color: COLORS.muted, fontSize: 12 }}>Color:</span>
+      <ColorPicker value={value} onChange={onChange} allowClear clearLabel="Use category color" />
     </div>
   );
 }

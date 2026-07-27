@@ -11,36 +11,31 @@ export const COLORS = {
   primary: '#4a9eff',
 }
 
-// WORK: saturated, high-contrast — for quickly telling categories apart
-// in a busy pipeline.
-export const WORK_PALETTE = [
-  '#4a9eff', // blue
-  '#4ecf7a', // green
-  '#c47aff', // purple
-  '#ffb454', // amber
-  '#ff6b9d', // pink
-  '#4ec9d4', // cyan
-  '#ff8a65', // coral
-  '#8a8fa3', // slate
+// Unified 4×8 palette shared by categories (work + personal) and by
+// calendar event color overrides. Rows 1-3 are chromatic (light → medium →
+// dark), each row ordered left-to-right red → orange → amber → green →
+// teal → blue → indigo → purple. Row 4 is a white → black grayscale ramp.
+export const UNIFIED_PALETTE = [
+  // Row 1 — light
+  '#fca5a5', '#fdba74', '#fcd34d', '#86efac', '#5eead4', '#93c5fd', '#a5b4fc', '#d8b4fe',
+  // Row 2 — medium
+  '#ef4444', '#f97316', '#f59e0b', '#22c55e', '#14b8a6', '#3b82f6', '#6366f1', '#a855f7',
+  // Row 3 — dark
+  '#b91c1c', '#c2410c', '#b45309', '#15803d', '#0f766e', '#1d4ed8', '#4338ca', '#7e22ce',
+  // Row 4 — grayscale
+  '#ffffff', '#e5e7eb', '#d1d5db', '#9ca3af', '#6b7280', '#4b5563', '#1f2937', '#000000',
 ]
 
-// PERSONAL: muted / pastel — softer on the eyes for after-hours use.
-export const PERSONAL_PALETTE = [
-  '#8bb4d9', // muted blue
-  '#a3d4a6', // sage
-  '#c8a3d9', // lavender
-  '#d9c39a', // sand
-  '#d9a3b8', // dusty rose
-  '#a3d0d4', // seafoam
-  '#d9b298', // peach
-  '#a8adb8', // grey mist
-]
+export const PALETTE_COLS = 8
+export const PALETTE_ROWS = 4
 
-// Legacy alias — some callers may still import PALETTE unaware of the split.
-export const PALETTE = WORK_PALETTE
+// Kept for backward compat with any existing imports.
+export const PALETTE = UNIFIED_PALETTE
+export const WORK_PALETTE = UNIFIED_PALETTE
+export const PERSONAL_PALETTE = UNIFIED_PALETTE
 
-export function paletteFor(scope) {
-  return scope === 'personal' ? PERSONAL_PALETTE : WORK_PALETTE
+export function paletteFor() {
+  return UNIFIED_PALETTE
 }
 
 export const STATUS_CYCLE = ['Not Started', 'In Progress', 'Done']
@@ -59,7 +54,7 @@ export const UNCATEGORIZED = 'Uncategorized'
 
 export const CATEGORY_COLOR = {
   work: COLORS.primary,
-  personal: PALETTE[1],
+  personal: UNIFIED_PALETTE[11], // green-500
   holiday: '#e84057',
 }
 

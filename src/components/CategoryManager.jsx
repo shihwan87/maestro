@@ -7,14 +7,14 @@ import {
   SortableContext, verticalListSortingStrategy, arrayMove, useSortable
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { COLORS, paletteFor, UNCATEGORIZED } from '../styles/theme'
+import { COLORS, UNIFIED_PALETTE, UNCATEGORIZED } from '../styles/theme'
 import { ARCHIVED } from '../lib/constants'
+import { ColorPicker } from './ColorPicker'
 
 export function CategoryManager({ open, onClose, categories, scope = 'work',
   onAdd, onUpdate, onDelete, onReorder }) {
-  const palette = paletteFor(scope)
   const [newName, setNewName] = useState('')
-  const [newColor, setNewColor] = useState(palette[0])
+  const [newColor, setNewColor] = useState(UNIFIED_PALETTE[8])
   const [editingId, setEditingId] = useState(null)
   const [editName, setEditName] = useState('')
   const [editColor, setEditColor] = useState('')
@@ -34,7 +34,7 @@ export function CategoryManager({ open, onClose, categories, scope = 'work',
     setErr(null)
     try {
       await onAdd({ name: newName.trim(), color: newColor })
-      setNewName(''); setNewColor(palette[0])
+      setNewName(''); setNewColor(UNIFIED_PALETTE[8])
     } catch (e) { setErr(e.message || String(e)) }
   }
 
@@ -74,7 +74,6 @@ export function CategoryManager({ open, onClose, categories, scope = 'work',
               {categories.map(c => (
                 <CategoryRow key={c.id}
                   category={c}
-                  palette={palette}
                   isEditing={editingId === c.id}
                   isConfirming={confirmDel === c.id}
                   editName={editName} editColor={editColor}
@@ -94,7 +93,7 @@ export function CategoryManager({ open, onClose, categories, scope = 'work',
         <form onSubmit={submitNew} style={S.addBlock}>
           <div style={S.addHead}>Add new category</div>
           <div style={S.addRow}>
-            <Swatches palette={palette} value={newColor} onChange={setNewColor} />
+            <ColorPicker value={newColor} onChange={setNewColor} />
             <input style={S.input} value={newName} onChange={e => setNewName(e.target.value)}
               placeholder="Category name" />
             <button type="submit" style={S.addBtn}>+ Add</button>
@@ -108,7 +107,7 @@ export function CategoryManager({ open, onClose, categories, scope = 'work',
 }
 
 function CategoryRow({
-  category: c, palette, isEditing, isConfirming,
+  category: c, isEditing, isConfirming,
   editName, editColor, setEditName, setEditColor,
   onStartEdit, onSaveEdit, onCancelEdit,
   onAskDelete, onCancelDelete, onConfirmDelete,
@@ -128,7 +127,7 @@ function CategoryRow({
       <span {...attributes} {...listeners} style={S.handle} title="Drag to reorder">⋮⋮</span>
       {isEditing ? (
         <>
-          <Swatches palette={palette} value={editColor} onChange={setEditColor} />
+          <ColorPicker value={editColor} onChange={setEditColor} />
           <input style={S.input} value={editName} onChange={e => setEditName(e.target.value)} />
           <button onClick={onSaveEdit} style={S.save}>Save</button>
           <button onClick={onCancelEdit} style={S.cancel}>Cancel</button>
@@ -157,27 +156,6 @@ function CategoryRow({
       )}
     </div>
   )
-}
-
-function Swatches({ palette, value, onChange }) {
-  return (
-    <div style={SW.row}>
-      {palette.map(c => (
-        <button key={c} type="button" onClick={() => onChange(c)}
-          style={{
-            ...SW.swatch,
-            background: c,
-            outline: value === c ? `2px solid ${COLORS.text}` : '0',
-            outlineOffset: 1,
-          }} />
-      ))}
-    </div>
-  )
-}
-
-const SW = {
-  row: { display: 'flex', gap: 4 },
-  swatch: { width: 18, height: 18, border: 0, borderRadius: 4, cursor: 'pointer' },
 }
 
 const S = {
