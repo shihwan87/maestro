@@ -225,11 +225,9 @@ function WeekGrid({ weekStart, layout, holidayDates, onSelectInstance, onCreateN
           const isToday = d === todayStr;
           const isWeekend = i === 0 || i === 6; // Sun or Sat (DAY_LABEL_KO is Sun-first)
           const isHoliday = holidayDates.has(d);
-          const labelColor = isToday
-            ? COLORS.primary
-            : isWeekend || isHoliday
-              ? COLORS.danger
-              : COLORS.text;
+          const labelColor = isWeekend || isHoliday
+            ? COLORS.danger
+            : COLORS.text;
 
           return (
             <div
@@ -240,8 +238,10 @@ function WeekGrid({ weekStart, layout, holidayDates, onSelectInstance, onCreateN
                 textAlign: 'center',
                 fontSize: 12,
                 color: labelColor,
-                fontWeight: isToday ? 600 : 400,
+                fontWeight: 400,
                 borderLeft: i > 0 ? `1px solid ${COLORS.border}` : 'none',
+                border: isToday ? `2px solid ${COLORS.danger}` : undefined,
+                borderRadius: isToday ? 4 : undefined,
               }}
             >
               {dateLabel}
