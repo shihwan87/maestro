@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { COLORS } from '../styles/theme'
 import { supabase } from '../lib/supabase'
+import { TrustedDeviceManager } from './TrustedDeviceManager'
 
 const STATUS_COLOR = {
   open:      '#f7b955',
@@ -23,6 +24,7 @@ export function ConfigTab() {
   const [loading, setLoading] = useState(true)
   const [sending, setSending] = useState(false)
   const [err, setErr] = useState(null)
+  const [showDeviceManager, setShowDeviceManager] = useState(false)
 
   const fetchAll = useCallback(async () => {
     setLoading(true)
@@ -90,9 +92,14 @@ export function ConfigTab() {
       <header style={S.header}>
         <div style={S.headerRow}>
           <h1 style={S.h1}>Requests to Claude</h1>
-          <button type="button" onClick={hardRefresh} style={S.refresh} title="Clear PWA cache and reload">
-            ↻ Hard refresh
-          </button>
+          <div style={{ display: 'flex', gap: 6 }}>
+            <button type="button" onClick={() => setShowDeviceManager(true)} style={S.refresh} title="Manage trusted devices">
+              Trusted Devices
+            </button>
+            <button type="button" onClick={hardRefresh} style={S.refresh} title="Clear PWA cache and reload">
+              ↻ Hard refresh
+            </button>
+          </div>
         </div>
         <p style={S.sub}>Send a request to Claude. The agent proposes a plan; you approve here.</p>
       </header>
@@ -185,6 +192,10 @@ export function ConfigTab() {
         <div>build: {commit}</div>
         <a style={S.link} href={repoUrl} target="_blank" rel="noreferrer">full_dev_plan.md</a>
       </footer>
+
+      {showDeviceManager && (
+        <TrustedDeviceManager onClose={() => setShowDeviceManager(false)} />
+      )}
     </div>
   )
 }

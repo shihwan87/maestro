@@ -1,17 +1,36 @@
 import { useState, useEffect } from 'react'
 import { COLORS } from '../styles/theme'
+import { supabase } from '../lib/supabase'
+import { getDeviceToken } from '../lib/deviceFingerprint'
 
 const KEY = 'maestro.unlocked'
 
 export function PinGate({ children }) {
   const [unlocked, setUnlocked] = useState(() => sessionStorage.getItem(KEY) === '1')
+  const [checking, setChecking] = useState(!unlocked)
   const [pin, setPin] = useState('')
   const [error, setError] = useState(false)
 
   useEffect(() => {
-    if (unlocked) sessionStorage.setItem(KEY, '1')
+    if (unlocked) { sessionStorage.setItem(KEY, '1'); return }
+    const token = getDeviceToken()
+    if (!token) { setChecking(false); return }
+    supabase
+      .from('trusted_devices')
+      .select('id')
+      .eq('device_token', token)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data) {
+          supabase.from('trusted_devices').update({ last_seen_at: new Date().toISOString() }).eq('id', data.id)
+          setUnlocked(true)
+        }
+        setChecking(false)
+      })
+      .catch(() => setChecking(false))
   }, [unlocked])
 
+  if (checking) return null
   if (unlocked) return children
 
   const submit = (e) => {
