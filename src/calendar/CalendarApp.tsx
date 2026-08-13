@@ -20,12 +20,13 @@ import { supabase, getSession, onAuthStateChange } from './lib/supabase';
 import { isGoogleConnected, startGoogleConnect } from './lib/api';
 import { DailyView } from './components/DailyView';
 import { WeeklyView } from './components/WeeklyView';
+import { DailyNotesView } from './components/DailyNotesView';
 import { EventDetail, type EventDetailMode } from './components/EventDetail';
 import { SyncButton } from './components/SyncButton';
 import type { EventInstance, SchedEvent, SyncResult } from './lib/types';
 import { COLORS } from '../styles/theme';
 
-type Tab = 'daily' | 'weekly';
+type Tab = 'daily' | 'weekly' | 'notes';
 
 function pad2(n: number): string {
   return String(n).padStart(2, '0');
@@ -434,6 +435,7 @@ export default function CalendarApp() {
             onCreateNew={openCreate}
           />
         )}
+        {tab === 'notes' && <DailyNotesView key={`notes-${date}`} date={date} />}
         <EventDetail
           mode={detailMode}
           instance={selectedInstance}
@@ -452,6 +454,7 @@ function TabBar({ tab, onChange }: { tab: Tab; onChange: (t: Tab) => void }) {
   const tabs: Array<{ id: Tab; label: string }> = [
     { id: 'daily', label: 'DAILY' },
     { id: 'weekly', label: 'WEEKLY' },
+    { id: 'notes', label: 'NOTES' },
   ];
   return (
     <nav
@@ -507,7 +510,7 @@ function DateNav({
   onToday: () => void;
   onSyncComplete: (results: SyncResult[]) => void;
 }) {
-  const step = tab === 'daily' ? 1 : 7;
+  const step = tab === 'weekly' ? 7 : 1;
   return (
     <div
       style={{
@@ -534,12 +537,12 @@ function DateNav({
           fontWeight: 600,
         }}
       >
-        {tab === 'daily'
-          ? formatDailyHeader(date)
-          : `Week ${isoWeek(shiftDate(sundayOfWeek(date), 1))}`}
+        {tab === 'weekly'
+          ? `Week ${isoWeek(shiftDate(sundayOfWeek(date), 1))}`
+          : formatDailyHeader(date)}
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-        <SyncButton onSyncComplete={onSyncComplete} />
+        {tab !== 'notes' && <SyncButton onSyncComplete={onSyncComplete} />}
         <button onClick={onToday} style={navBtnStyle}>
           Today
         </button>

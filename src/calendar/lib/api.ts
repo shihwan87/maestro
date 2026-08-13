@@ -22,6 +22,7 @@ import type {
   EventInstance,
   GoogleOAuthStartResponse,
   NewEventInput,
+  SchedDailyNote,
   SchedEvent,
   SyncResult,
   SyncRunResponse,
@@ -271,4 +272,73 @@ export async function unpushEvent(schedEventId: string): Promise<SchedEvent> {
   const schedEvent = await invokeEventCrud({ action: 'unpush', schedEventId });
   if (!schedEvent) throw new Error('event-crud unpush returned no event');
   return schedEvent;
+}
+
+// Renders that day's events as a starting-point checklist for the Events
+// box. Only called by DailyNotesView when no row exists yet for the date —
+// once a note is saved, its saved text is shown as-is and this is never
+// called again for that date, even if events change later.
+export function buildDailyEventsTemplate(instances: EventInstance[]): string {
+  const nonHoliday = instances.filter((i) => i.sourceEvent.category !== 'holiday');
+  if (nonHoliday.length === 0) return '';
+  const fmt = (iso: string) => {
+    const d = new Date(iso);
+    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  };
+  return [...nonHoliday]
+    .sort((a, b) => a.instanceStartTs.localeCompare(b.instanceStartTs))
+    .map((i) => {
+      const ev = i.sourceEvent;
+      const when = ev.all_day ? 'all day' : `${fmt(i.instanceStartTs)}–${fmt(i.instanceEndTs)}`;
+      return `- ${when} ${ev.title}`;
+    })
+    .join('\n');
+}
+
+export async function fetchDailyNote(date: string): Promise<SchedDailyNote | null> {
+  const { data, error } = await supabase
+    .from('sched_daily_notes')
+    .select('*')
+    .eq('note_date', date)
+    .maybeSingle();
+  if (error) {
+    console.error('[api] fetchDailyNote failed', error);
+    throw error;
+  }
+  return data;
+}
+
+export async function saveDailyNote(
+  date: string,
+  fields: { eventsText: string; thoughtsText: string },
+): Promise<SchedDailyNote> {
+  const { data: userData, error: userError } = await supabase.auth.getUser();
+  if (userError || !userData.user) throw new Error('Not signed in');
+  const { data, error } = await supabase
+    .from('sched_daily_notes')
+    .upsert(
+      {
+        user_id: userData.user.id,
+        note_date: date,
+        events_text: fields.eventsText,
+        thoughts_text: fields.thoughtsText,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'user_id,note_date' },
+    )
+    .select()
+    .single();
+  if (error) {
+    console.error('[api] saveDailyNote failed', error);
+    throw error;
+  }
+  return data;
+}
+
+export async function deleteDailyNote(date: string): Promise<void> {
+  const { error } = await supabase.from('sched_daily_notes').delete().eq('note_date', date);
+  if (error) {
+    console.error('[api] deleteDailyNote failed', error);
+    throw error;
+  }
 }

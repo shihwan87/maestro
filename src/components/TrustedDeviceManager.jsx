@@ -2,11 +2,10 @@ import { useState, useEffect, useCallback } from 'react'
 import { COLORS } from '../styles/theme'
 import { supabase } from '../lib/supabase'
 import { getOrCreateDeviceToken } from '../lib/deviceFingerprint'
+import { PinConfirmModal } from './PinConfirmModal'
 
 export function TrustedDeviceManager({ onClose }) {
   const [pinVerified, setPinVerified] = useState(false)
-  const [pin, setPin] = useState('')
-  const [pinError, setPinError] = useState(false)
   const [devices, setDevices] = useState([])
   const [loading, setLoading] = useState(false)
   const [nickname, setNickname] = useState('')
@@ -29,17 +28,6 @@ export function TrustedDeviceManager({ onClose }) {
   useEffect(() => {
     if (pinVerified) fetchDevices()
   }, [pinVerified, fetchDevices])
-
-  const verifyPin = (e) => {
-    e.preventDefault()
-    if (pin === import.meta.env.VITE_APP_PIN) {
-      setPinVerified(true)
-      setPinError(false)
-    } else {
-      setPinError(true)
-      setPin('')
-    }
-  }
 
   const addCurrent = async () => {
     const nick = nickname.trim()
@@ -69,24 +57,12 @@ export function TrustedDeviceManager({ onClose }) {
 
   if (!pinVerified) {
     return (
-      <div style={S.overlay}>
-        <div style={S.modal}>
-          <h2 style={S.h2}>Manage Trusted Devices</h2>
-          <p style={S.sub}>Re-enter PIN to continue</p>
-          <form onSubmit={verifyPin}>
-            <input
-              type="password" inputMode="numeric" autoFocus
-              value={pin} onChange={e => { setPin(e.target.value); setPinError(false) }}
-              style={{ ...S.input, borderColor: pinError ? COLORS.danger : COLORS.border }}
-            />
-            {pinError && <p style={S.err}>Wrong PIN</p>}
-            <div style={S.row}>
-              <button type="button" onClick={onClose} style={S.cancelBtn}>Cancel</button>
-              <button type="submit" style={S.primaryBtn}>Verify</button>
-            </div>
-          </form>
-        </div>
-      </div>
+      <PinConfirmModal
+        title="Manage Trusted Devices"
+        subtitle="Re-enter PIN to continue"
+        onVerified={() => setPinVerified(true)}
+        onCancel={onClose}
+      />
     )
   }
 
@@ -200,8 +176,6 @@ const S = {
     border: `1px solid ${COLORS.border}`, borderRadius: 8, outline: 'none',
     boxSizing: 'border-box',
   },
-  err: { color: COLORS.danger, fontSize: 13, margin: '6px 0 0' },
-  row: { display: 'flex', gap: 8, marginTop: 12 },
   primaryBtn: {
     background: COLORS.primary, color: '#fff', border: 0, borderRadius: 8,
     padding: '8px 16px', fontSize: 13, fontWeight: 600, cursor: 'pointer',

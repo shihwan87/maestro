@@ -39,6 +39,16 @@ export interface SchedEvent {
   updated_at: string;
 }
 
+export interface SchedDailyNote {
+  id: string;
+  user_id: string;
+  note_date: string;
+  events_text: string;
+  thoughts_text: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface SchedReportRow {
   id: string;
   user_id: string;
