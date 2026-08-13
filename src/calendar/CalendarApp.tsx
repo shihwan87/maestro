@@ -14,7 +14,7 @@
 // The Phase 5 "Next Week" tab was removed as redundant with Weekly's own
 // prev/next nav.
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { supabase, getSession, onAuthStateChange } from './lib/supabase';
 import { isGoogleConnected, startGoogleConnect } from './lib/api';
@@ -417,6 +417,7 @@ export default function CalendarApp() {
           date={date}
           onShift={(delta) => setDate((d) => shiftDate(d, delta))}
           onToday={() => setDate(todayDateStr())}
+          onSelectDate={setDate}
           onSyncComplete={handleSyncComplete}
         />
         {tab === 'daily' && (
@@ -435,7 +436,7 @@ export default function CalendarApp() {
             onCreateNew={openCreate}
           />
         )}
-        {tab === 'notes' && <DailyNotesView key={`notes-${date}`} date={date} />}
+        {tab === 'notes' && <DailyNotesView date={date} />}
         <EventDetail
           mode={detailMode}
           instance={selectedInstance}
@@ -502,12 +503,14 @@ function DateNav({
   date,
   onShift,
   onToday,
+  onSelectDate,
   onSyncComplete,
 }: {
   tab: Tab;
   date: string;
   onShift: (delta: number) => void;
   onToday: () => void;
+  onSelectDate: (date: string) => void;
   onSyncComplete: (results: SyncResult[]) => void;
 }) {
   const step = tab === 'weekly' ? 7 : 1;
@@ -543,11 +546,50 @@ function DateNav({
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
         {tab !== 'notes' && <SyncButton onSyncComplete={onSyncComplete} />}
+        {tab === 'notes' && <DateSelectButton date={date} onSelectDate={onSelectDate} />}
         <button onClick={onToday} style={navBtnStyle}>
           Today
         </button>
       </div>
     </div>
+  );
+}
+
+// "Select" button next to Today — click reveals a native <input type="date">
+// (real calendar-style picker) in its place, focused immediately. max=today
+// keeps future dates out of the picker's own UI; the onChange guard below
+// is a belt-and-suspenders check in case a browser lets a future date
+// through some other input path (e.g. typed digits).
+function DateSelectButton({ date, onSelectDate }: { date: string; onSelectDate: (date: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (open) inputRef.current?.focus();
+  }, [open]);
+
+  if (!open) {
+    return (
+      <button onClick={() => setOpen(true)} style={navBtnStyle}>
+        Select
+      </button>
+    );
+  }
+
+  return (
+    <input
+      ref={inputRef}
+      type="date"
+      defaultValue={date}
+      max={todayDateStr()}
+      onChange={(e) => {
+        const value = e.target.value;
+        if (value && value <= todayDateStr()) onSelectDate(value);
+        setOpen(false);
+      }}
+      onBlur={() => setOpen(false)}
+      style={{ ...navBtnStyle, colorScheme: 'dark' }}
+    />
   );
 }
 
