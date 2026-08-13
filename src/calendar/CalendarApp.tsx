@@ -514,6 +514,9 @@ function DateNav({
   onSyncComplete: (results: SyncResult[]) => void;
 }) {
   const step = tab === 'weekly' ? 7 : 1;
+  // NOTES only logs today and earlier — forward nav stops at today instead
+  // of drifting into dates that can't have a log yet.
+  const forwardBlocked = tab === 'notes' && shiftDate(date, step) > todayDateStr();
   return (
     <div
       style={{
@@ -529,7 +532,11 @@ function DateNav({
         <button onClick={() => onShift(-step)} style={navBtnStyle}>
           ‹
         </button>
-        <button onClick={() => onShift(step)} style={navBtnStyle}>
+        <button
+          onClick={() => onShift(step)}
+          disabled={forwardBlocked}
+          style={{ ...navBtnStyle, opacity: forwardBlocked ? 0.4 : 1, cursor: forwardBlocked ? 'default' : 'pointer' }}
+        >
           ›
         </button>
       </div>
