@@ -211,7 +211,7 @@ function NoteBox({
         <textarea
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          rows={label === 'Thoughts' ? 10 : 6}
+          rows={15}
           style={{
             width: '100%',
             padding: 10,
