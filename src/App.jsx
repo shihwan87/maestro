@@ -2,6 +2,7 @@ import { useState, useEffect, lazy, Suspense } from 'react'
 import { PinGate } from './components/PinGate'
 import { Dashboard } from './components/Dashboard'
 import { ConfigTab } from './components/ConfigTab'
+import { StudyTab } from './components/StudyTab'
 import { TabBar } from './components/TabBar'
 import { useTabMarkers, markerFor } from './hooks/useTabMarkers'
 import { COLORS } from './styles/theme'
@@ -12,7 +13,7 @@ const TOP_TAB_KEY = 'maestro.topTab'
 const SUB_TAB_KEY = 'maestro.activeTab'
 
 const VALID_TOP_TABS = ['tasks', 'calendar', 'config']
-const VALID_SUB_TABS = ['work', 'personal']
+const VALID_SUB_TABS = ['work', 'personal', 'study']
 
 export default function App() {
   const [topTab, setTopTab] = useState(() => {
@@ -46,6 +47,7 @@ export default function App() {
           <div style={{ paddingTop: 60 }}>
             {subTab === 'work'     && <Dashboard scope="work"     title="Work"     itemNoun="Project" />}
             {subTab === 'personal' && <Dashboard scope="personal" title="Personal" itemNoun="Item" />}
+            {subTab === 'study'    && <StudyTab />}
           </div>
         </div>
       )}

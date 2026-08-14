@@ -3,6 +3,7 @@ import { COLORS } from '../styles/theme'
 const TABS = [
   { id: 'work',     label: 'WORK' },
   { id: 'personal', label: 'PERSONAL' },
+  { id: 'study',    label: 'STUDY' },
 ]
 
 // Decorate the label based on urgency marker.
