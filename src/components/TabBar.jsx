@@ -7,10 +7,10 @@ const TABS = [
 ]
 
 // Decorate the label based on urgency marker.
-// 'star' → ☆ LABEL ☆ (≤3 days), 'bang' → ! LABEL ! (≤7 days), null → LABEL.
+// 'star' → ☆ LABEL (≤3 days), 'bang' → ! LABEL (≤7 days), null → LABEL.
 function decorate(label, marker) {
-  if (marker === 'star') return `☆ ${label} ☆`
-  if (marker === 'bang') return `! ${label} !`
+  if (marker === 'star') return `☆ ${label}`
+  if (marker === 'bang') return `! ${label}`
   return label
 }
 
@@ -47,6 +47,6 @@ const S = {
     zIndex: 50 },
   btn: { flex: 1, background: 'transparent',
     margin: '4px 4px 0', borderRadius: 8,
-    padding: '10px 8px', fontSize: 13, fontWeight: 700, letterSpacing: 0.5,
-    cursor: 'pointer' },
+    padding: '10px 4px', fontSize: 13, fontWeight: 700, letterSpacing: 0.5,
+    cursor: 'pointer', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
 }

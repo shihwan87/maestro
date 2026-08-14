@@ -79,7 +79,7 @@ function TopTabBar({ active, onChange, markers = {} }) {
         const on = active === t.id
         const marker = markers[t.id]
         const urgentColor = marker === 'star' ? COLORS.danger : marker === 'bang' ? COLORS.warn : null
-        const label = marker === 'star' ? `☆ ${t.label} ☆` : marker === 'bang' ? `! ${t.label} !` : t.label
+        const label = marker === 'star' ? `☆ ${t.label}` : marker === 'bang' ? `! ${t.label}` : t.label
         return (
           <button key={t.id} onClick={() => onChange(t.id)} style={{
             ...topBtnStyle,
@@ -103,6 +103,6 @@ const topBarStyle = {
 const topBtnStyle = {
   flex: 1, background: 'transparent',
   margin: '4px 4px 0', borderRadius: 8,
-  padding: '10px 8px', fontSize: 13, fontWeight: 700, letterSpacing: 1,
-  cursor: 'pointer',
+  padding: '10px 4px', fontSize: 13, fontWeight: 700, letterSpacing: 1,
+  cursor: 'pointer', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
 }
