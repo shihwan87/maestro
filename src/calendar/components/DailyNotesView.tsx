@@ -17,6 +17,7 @@ import type { SchedDailyNote } from '../lib/types';
 
 interface DailyNotesViewProps {
   date: string; // 'YYYY-MM-DD'
+  onCancelEntry?: () => void; // lets the entry PIN prompt back out (e.g. misclick) to another tab
 }
 
 // 15 lines at fontSize 14 / lineHeight 1.5 (=21px/line) + 20px vertical padding.
@@ -25,7 +26,7 @@ interface DailyNotesViewProps {
 // on desktop" complaint: the read-only view previously shrank to content.
 const BOX_HEIGHT = 335;
 
-export function DailyNotesView({ date }: DailyNotesViewProps) {
+export function DailyNotesView({ date, onCancelEntry }: DailyNotesViewProps) {
   const [entryUnlocked, setEntryUnlocked] = useState(false);
   const [editUnlocked, setEditUnlocked] = useState(false);
   const [pendingAction, setPendingAction] = useState<'edit' | 'delete' | null>(null);
@@ -76,6 +77,7 @@ export function DailyNotesView({ date }: DailyNotesViewProps) {
         title="Daily Notes"
         subtitle="Enter PIN to view this day's notes"
         onVerified={() => setEntryUnlocked(true)}
+        onCancel={onCancelEntry}
       />
     );
   }

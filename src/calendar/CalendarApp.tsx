@@ -436,7 +436,7 @@ export default function CalendarApp() {
             onCreateNew={openCreate}
           />
         )}
-        {tab === 'notes' && <DailyNotesView date={date} />}
+        {tab === 'notes' && <DailyNotesView date={date} onCancelEntry={() => setTab('daily')} />}
         <EventDetail
           mode={detailMode}
           instance={selectedInstance}
