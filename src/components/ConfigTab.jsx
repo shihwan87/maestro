@@ -6,6 +6,7 @@ import { TrustedDeviceManager } from './TrustedDeviceManager'
 const STATUS_COLOR = {
   open:      '#f7b955',
   proposed:  '#5b9dff',
+  revising:  '#5b9dff',
   executing: '#9b7bff',
   done:      '#3ddc97',
   dismissed: '#6b7280',
@@ -67,6 +68,17 @@ export function ConfigTab() {
 
   const approve = (r) => setStatus(r.id, 'executing')
   const reject  = (r) => setStatus(r.id, 'dismissed')
+
+  // A reply is neither an approval nor a rejection — the row moves to
+  // 'revising' so the agent knows to read user_note and re-propose rather
+  // than start building.
+  const sendReply = async (r, note) => {
+    await setStatus(r.id, 'revising', {
+      user_note: note,
+      user_note_at: new Date().toISOString(),
+    })
+  }
+
   const commit  = import.meta.env.VITE_COMMIT_SHA || 'dev'
   const repoUrl = 'https://github.com/shihwan87/maestro/blob/main/full_dev_plan.md'
 
@@ -150,6 +162,20 @@ export function ConfigTab() {
                 </div>
               )}
 
+              {r.user_note && (
+                <div style={S.userNote}>
+                  <strong style={{ fontSize: 12, color: COLORS.muted }}>YOUR REPLY</strong>
+                  <div style={{ whiteSpace: 'pre-wrap', marginTop: 4 }}>{r.user_note}</div>
+                  {r.user_note_at && (
+                    <div style={{ ...S.muted, marginTop: 4 }}>{new Date(r.user_note_at).toLocaleString()}</div>
+                  )}
+                </div>
+              )}
+
+              {(r.status === 'proposed' || r.status === 'revising') && (
+                <ReplyBox request={r} onSend={sendReply} />
+              )}
+
               {r.response && (
                 <div style={S.response}><strong>Reply:</strong> {r.response}</div>
               )}
@@ -164,7 +190,7 @@ export function ConfigTab() {
                 </div>
               )}
 
-              {r.status === 'proposed' && (
+              {(r.status === 'proposed' || r.status === 'revising') && (
                 <div style={S.itemActions}>
                   <button style={{ ...S.smallBtn, borderColor: TIER_COLOR.trivial, color: TIER_COLOR.trivial }}
                     onClick={() => approve(r)}>Approve & run</button>
@@ -200,6 +226,37 @@ export function ConfigTab() {
   )
 }
 
+// Free-text answer to a proposal — "do it but skip part 2", "why not X?".
+// Draft state is local so typing doesn't re-render the whole request list on
+// every keystroke; it only reaches the DB on Send.
+function ReplyBox({ request, onSend }) {
+  const [draft, setDraft] = useState('')
+  const [busy, setBusy] = useState(false)
+
+  const send = async () => {
+    const note = draft.trim()
+    if (!note) return
+    setBusy(true)
+    try {
+      await onSend(request, note)
+      setDraft('')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div style={S.replyBox}>
+      <textarea value={draft} onChange={e => setDraft(e.target.value)} rows={2}
+        placeholder={request.user_note ? 'Add another reply…' : 'Reply to this proposal…'}
+        style={S.replyInput} />
+      <button onClick={send} disabled={busy || !draft.trim()} style={S.replySend}>
+        {busy ? 'Sending…' : 'Send reply'}
+      </button>
+    </div>
+  )
+}
+
 const S = {
   page: { minHeight: '100vh', background: COLORS.bg, color: COLORS.text,
     paddingLeft: 20, paddingRight: 20, maxWidth: 800, margin: '0 auto' },
@@ -225,6 +282,15 @@ const S = {
   proposal: { marginTop: 10, padding: 10, background: COLORS.bg,
     border: `1px dashed ${COLORS.border}`, borderRadius: 8, fontSize: 13 },
   response: { marginTop: 8, padding: 8, background: COLORS.bg, borderRadius: 8, fontSize: 13 },
+  userNote: { marginTop: 8, padding: 10, background: COLORS.bg, borderLeft: `3px solid ${COLORS.primary}`,
+    borderRadius: 8, fontSize: 13 },
+  replyBox: { marginTop: 8, display: 'flex', flexDirection: 'column', gap: 6 },
+  replyInput: { background: COLORS.bg, color: COLORS.text, border: `1px solid ${COLORS.border}`,
+    borderRadius: 8, padding: 8, fontSize: 13, outline: 'none', resize: 'vertical',
+    fontFamily: 'inherit' },
+  replySend: { alignSelf: 'flex-start', background: 'transparent', color: COLORS.primary,
+    border: `1px solid ${COLORS.primary}`, borderRadius: 8, padding: '4px 12px',
+    cursor: 'pointer', fontSize: 12, fontWeight: 600 },
   errBox: { marginTop: 8, padding: 8, background: '#3a1e1e', borderRadius: 8, fontSize: 13, color: COLORS.danger },
   commitRow: { marginTop: 6, fontSize: 12, fontFamily: 'monospace' },
   itemActions: { display: 'flex', gap: 6, marginTop: 8 },

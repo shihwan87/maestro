@@ -1,5 +1,7 @@
 #!/usr/bin/env node
-// Prints all open Claude requests from the schemanager app.
+// Prints all actionable Claude requests from the schemanager app —
+// 'open' rows plus 'revising' rows (a proposal the user replied to instead
+// of approving outright; user_note holds what they said).
 // Reads VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY from .env.
 // Usage: npm run claude:inbox  [--all]
 //   --all   include done + dismissed too
@@ -29,7 +31,7 @@ const supabase = createClient(url, key)
 const all = process.argv.includes('--all')
 
 let q = supabase.from('claude_requests').select('*').order('created_at', { ascending: false })
-if (!all) q = q.eq('status', 'open')
+if (!all) q = q.in('status', ['open', 'revising'])
 
 const { data, error } = await q
 if (error) { console.error(error.message); process.exit(1) }
@@ -44,6 +46,9 @@ for (const r of data) {
   console.log(`\n[${r.status.toUpperCase()}]  ${when}`)
   console.log(`id: ${r.id}`)
   console.log(r.text)
+  if (r.proposal && r.status === 'revising') console.log(`proposal:
+${r.proposal}`)
+  if (r.user_note) console.log(`user reply: ${r.user_note}`)
   if (r.response) console.log(`reply: ${r.response}`)
 }
 console.log(`\n${data.length} request${data.length === 1 ? '' : 's'}.`)

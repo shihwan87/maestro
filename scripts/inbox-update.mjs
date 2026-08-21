@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // Update one claude_requests row's status and optional fields.
 // Usage: node scripts/inbox-update.mjs <id> <status> [--tier X] [--proposal S] [--response S] [--commit SHA] [--error S]
-// Positional `<status>` maps to claude_requests.status (open|proposed|executing|done|dismissed|failed).
+// Positional `<status>` maps to claude_requests.status
+// (open|proposed|revising|executing|done|dismissed|failed).
 // Also sets proposed_at / approved_at / completed_at timestamps as appropriate.
 
 import { readFileSync, existsSync } from 'node:fs'
@@ -43,6 +44,9 @@ if (flags.run)      patch.run_id     = flags.run
 
 const now = new Date().toISOString()
 if (status === 'proposed')  patch.proposed_at  = now
+// Re-proposing after a reply clears the reply, so the next read doesn't
+// re-apply feedback that has already been folded into the new proposal.
+if (status === 'proposed')  patch.user_note     = null
 if (status === 'executing') patch.approved_at  = now
 if (status === 'done')      patch.completed_at = now
 if (status === 'failed')    patch.completed_at = now
