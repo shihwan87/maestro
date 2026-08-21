@@ -342,3 +342,21 @@ export async function deleteDailyNote(date: string): Promise<void> {
     throw error;
   }
 }
+
+// Returns the note_date strings ('YYYY-MM-DD') that already have a saved
+// daily note inside [startDate, endDate] inclusive. Only the date column is
+// selected — the NotesCalendar month grid needs to know *which* days are
+// written, never their content, so no note text crosses the wire for days
+// the user hasn't opened.
+export async function fetchDailyNoteDates(startDate: string, endDate: string): Promise<string[]> {
+  const { data, error } = await supabase
+    .from('sched_daily_notes')
+    .select('note_date')
+    .gte('note_date', startDate)
+    .lte('note_date', endDate);
+  if (error) {
+    console.error('[api] fetchDailyNoteDates failed', error);
+    throw error;
+  }
+  return (data ?? []).map((row) => row.note_date as string);
+}

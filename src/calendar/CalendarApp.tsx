@@ -21,6 +21,7 @@ import { isGoogleConnected, startGoogleConnect } from './lib/api';
 import { DailyView } from './components/DailyView';
 import { WeeklyView } from './components/WeeklyView';
 import { DailyNotesView } from './components/DailyNotesView';
+import { NotesCalendar } from './components/NotesCalendar';
 import { EventDetail, type EventDetailMode } from './components/EventDetail';
 import { SyncButton } from './components/SyncButton';
 import type { EventInstance, SchedEvent, SyncResult } from './lib/types';
@@ -284,6 +285,12 @@ export default function CalendarApp() {
   const [tab, setTab] = useState<Tab>('daily');
   const [date, setDate] = useState<string>(() => todayDateStr());
   const [syncErrors, setSyncErrors] = useState<string[]>([]);
+  // The noted-day marks in the NOTES date picker are only fetched once the
+  // tab's PIN gate has been cleared — "which days you wrote on" is itself
+  // diary information, so it stays behind the same gate as the text.
+  // DailyNotesView unmounts when you leave the tab, which re-locks it.
+  const [notesUnlocked, setNotesUnlocked] = useState(false);
+  const [noteDatesKey, setNoteDatesKey] = useState(0);
 
   function openView(instance: EventInstance) {
     setSelectedInstance(instance);
@@ -385,7 +392,13 @@ export default function CalendarApp() {
 
   return (
     <div>
-      <TabBar tab={tab} onChange={setTab} />
+      <TabBar
+        tab={tab}
+        onChange={(next) => {
+          if (next !== 'notes') setNotesUnlocked(false); // re-lock on the way out
+          setTab(next);
+        }}
+      />
       <div style={{ paddingTop: 60 }}>
         {googleAuthBanner === 'connected' && (
           <p style={{ background: '#1e3a2e', padding: 8, textAlign: 'center' }}>Google Calendar connected.</p>
@@ -419,6 +432,8 @@ export default function CalendarApp() {
           onToday={() => setDate(todayDateStr())}
           onSelectDate={setDate}
           onSyncComplete={handleSyncComplete}
+          notesUnlocked={notesUnlocked}
+          noteDatesKey={noteDatesKey}
         />
         {tab === 'daily' && (
           <DailyView
@@ -436,7 +451,14 @@ export default function CalendarApp() {
             onCreateNew={openCreate}
           />
         )}
-        {tab === 'notes' && <DailyNotesView date={date} onCancelEntry={() => setTab('daily')} />}
+        {tab === 'notes' && (
+          <DailyNotesView
+            date={date}
+            onCancelEntry={() => setTab('daily')}
+            onUnlocked={() => setNotesUnlocked(true)}
+            onNotesChanged={() => setNoteDatesKey((k) => k + 1)}
+          />
+        )}
         <EventDetail
           mode={detailMode}
           instance={selectedInstance}
@@ -505,6 +527,8 @@ function DateNav({
   onToday,
   onSelectDate,
   onSyncComplete,
+  notesUnlocked,
+  noteDatesKey,
 }: {
   tab: Tab;
   date: string;
@@ -512,6 +536,8 @@ function DateNav({
   onToday: () => void;
   onSelectDate: (date: string) => void;
   onSyncComplete: (results: SyncResult[]) => void;
+  notesUnlocked: boolean;
+  noteDatesKey: number;
 }) {
   const step = tab === 'weekly' ? 7 : 1;
   // NOTES only logs today and earlier — forward nav stops at today instead
@@ -551,9 +577,16 @@ function DateNav({
           ? `Week ${isoWeek(shiftDate(sundayOfWeek(date), 1))}`
           : formatDailyHeader(date)}
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, position: 'relative' }}>
         {tab !== 'notes' && <SyncButton onSyncComplete={onSyncComplete} />}
-        {tab === 'notes' && <DateSelectButton date={date} onSelectDate={onSelectDate} />}
+        {tab === 'notes' && (
+          <DateSelectButton
+            date={date}
+            onSelectDate={onSelectDate}
+            notesUnlocked={notesUnlocked}
+            noteDatesKey={noteDatesKey}
+          />
+        )}
         <button onClick={onToday} style={navBtnStyle}>
           Today
         </button>
@@ -562,18 +595,29 @@ function DateNav({
   );
 }
 
-// "Select" button next to Today — click reveals a native <input type="date">
-// (real calendar-style picker) in its place, focused immediately. max=today
-// keeps future dates out of the picker's own UI; the onChange guard below
-// is a belt-and-suspenders check in case a browser lets a future date
-// through some other input path (e.g. typed digits).
-function DateSelectButton({ date, onSelectDate }: { date: string; onSelectDate: (date: string) => void }) {
+// "Select" button next to Today — opens the NotesCalendar month grid, which
+// marks the days that already have a saved note so the writing history is
+// visible at a glance (the native <input type="date"> it replaced could not
+// show that). Before the NOTES PIN gate is cleared there are no marks to
+// show — and the marks are themselves diary information — so until then
+// this falls back to the plain native picker.
+function DateSelectButton({
+  date,
+  onSelectDate,
+  notesUnlocked,
+  noteDatesKey,
+}: {
+  date: string;
+  onSelectDate: (date: string) => void;
+  notesUnlocked: boolean;
+  noteDatesKey: number;
+}) {
   const [open, setOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (open) inputRef.current?.focus();
-  }, [open]);
+    if (open && !notesUnlocked) inputRef.current?.focus();
+  }, [open, notesUnlocked]);
 
   if (!open) {
     return (
@@ -583,6 +627,28 @@ function DateSelectButton({ date, onSelectDate }: { date: string; onSelectDate: 
     );
   }
 
+  if (notesUnlocked) {
+    return (
+      <>
+        <button
+          onClick={() => setOpen(false)}
+          style={{ ...navBtnStyle, borderColor: COLORS.primary, color: COLORS.primary }}
+        >
+          Select
+        </button>
+        <NotesCalendar
+          date={date}
+          refreshKey={noteDatesKey}
+          onSelectDate={onSelectDate}
+          onClose={() => setOpen(false)}
+        />
+      </>
+    );
+  }
+
+  // max=today keeps future dates out of the picker's own UI; the onChange
+  // guard below is a belt-and-suspenders check in case a browser lets a
+  // future date through some other input path (e.g. typed digits).
   return (
     <input
       ref={inputRef}

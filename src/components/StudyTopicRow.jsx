@@ -93,7 +93,7 @@ export function StudyTopicRow({
       {notesOpen && (
         <div style={S.notesBlock}>
           <textarea value={notes} onChange={e => setNotes(e.target.value)} onBlur={saveNotes}
-            style={S.notes} rows={4} placeholder="Notes…" />
+            style={S.notes} rows={3} placeholder="Notes…" />
           {notesDirty && <button onClick={saveNotes} style={S.notesSave}>Save</button>}
         </div>
       )}
@@ -111,32 +111,32 @@ export function StudyTopicRow({
 
 const S = {
   wrap: { borderBottom: `1px solid ${COLORS.border}` },
-  row: { display: 'flex', alignItems: 'center', gap: 6, padding: '8px 4px', flexWrap: 'wrap' },
+  row: { display: 'flex', alignItems: 'center', gap: 4, padding: '2px 4px', flexWrap: 'wrap' },
   handle: { color: COLORS.muted, fontSize: 14, cursor: 'grab', userSelect: 'none',
     touchAction: 'none', padding: '0 2px' },
   chevron: { background: 'transparent', color: COLORS.muted, border: 0, cursor: 'pointer',
-    fontSize: 13, width: 20, minHeight: 36, display: 'inline-flex', alignItems: 'center',
+    fontSize: 13, width: 18, minHeight: 30, display: 'inline-flex', alignItems: 'center',
     justifyContent: 'center', flexShrink: 0 },
   title: { flex: 1, color: COLORS.text, fontSize: 14, fontWeight: 500, cursor: 'pointer',
-    minWidth: 100, padding: '4px 2px' },
+    minWidth: 100, padding: '2px 2px' },
   titleInput: { flex: 1, minWidth: 100, background: COLORS.card, color: COLORS.text,
-    border: `1px solid ${COLORS.primary}`, borderRadius: 8, padding: '6px 10px',
+    border: `1px solid ${COLORS.primary}`, borderRadius: 8, padding: '4px 10px',
     fontSize: 14, fontWeight: 500, outline: 'none', fontFamily: 'inherit' },
   iconBtn: { background: 'transparent', color: COLORS.muted, border: 0, cursor: 'pointer',
-    fontSize: 15, lineHeight: 1, padding: 6, minWidth: 36, minHeight: 36,
+    fontSize: 15, lineHeight: 1, padding: 4, minWidth: 30, minHeight: 30,
     display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   delBtn: { background: 'transparent', color: COLORS.danger, border: 0, cursor: 'pointer',
-    fontSize: 14, padding: 6, minWidth: 36, minHeight: 36, flexShrink: 0 },
+    fontSize: 14, padding: 4, minWidth: 30, minHeight: 30, flexShrink: 0 },
   delConfirm: { background: COLORS.danger, color: '#fff', border: 0, borderRadius: 8,
     padding: '6px 10px', cursor: 'pointer', fontSize: 12, fontWeight: 600 },
   cancelBtn: { background: 'transparent', color: COLORS.text, border: `1px solid ${COLORS.border}`,
     borderRadius: 8, padding: '6px 10px', cursor: 'pointer', fontSize: 12 },
-  notesBlock: { padding: '0 4px 10px', display: 'flex', flexDirection: 'column', gap: 6 },
+  notesBlock: { padding: '0 4px 6px', display: 'flex', flexDirection: 'column', gap: 4 },
   notes: { background: COLORS.card, color: COLORS.text, border: `1px solid ${COLORS.border}`,
     borderRadius: 8, padding: 8, fontSize: 13, resize: 'vertical', outline: 'none', fontFamily: 'inherit' },
   notesSave: { alignSelf: 'flex-start', background: COLORS.primary, color: '#fff', border: 0,
     borderRadius: 6, padding: '4px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer' },
-  childForm: { display: 'flex', gap: 6, padding: '0 4px 10px' },
+  childForm: { display: 'flex', gap: 6, padding: '0 4px 6px' },
   childInput: { flex: 1, background: COLORS.bg, color: COLORS.text, border: `1px solid ${COLORS.border}`,
     borderRadius: 8, padding: '6px 10px', fontSize: 13, outline: 'none' },
   childAddBtn: { background: COLORS.border, color: COLORS.text, border: 0, borderRadius: 8,

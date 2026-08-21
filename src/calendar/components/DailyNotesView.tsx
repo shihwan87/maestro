@@ -18,6 +18,8 @@ import type { SchedDailyNote } from '../lib/types';
 interface DailyNotesViewProps {
   date: string; // 'YYYY-MM-DD'
   onCancelEntry?: () => void; // lets the entry PIN prompt back out (e.g. misclick) to another tab
+  onUnlocked?: () => void; // entry PIN cleared — lets the date picker show which days are written
+  onNotesChanged?: () => void; // a note was saved or deleted — the picker's marks are now stale
 }
 
 // 15 lines at fontSize 14 / lineHeight 1.5 (=21px/line) + 20px vertical padding.
@@ -26,7 +28,7 @@ interface DailyNotesViewProps {
 // on desktop" complaint: the read-only view previously shrank to content.
 const BOX_HEIGHT = 335;
 
-export function DailyNotesView({ date, onCancelEntry }: DailyNotesViewProps) {
+export function DailyNotesView({ date, onCancelEntry, onUnlocked, onNotesChanged }: DailyNotesViewProps) {
   const [entryUnlocked, setEntryUnlocked] = useState(false);
   const [editUnlocked, setEditUnlocked] = useState(false);
   const [pendingAction, setPendingAction] = useState<'edit' | 'delete' | null>(null);
@@ -76,7 +78,10 @@ export function DailyNotesView({ date, onCancelEntry }: DailyNotesViewProps) {
       <PinConfirmModal
         title="Daily Notes"
         subtitle="Enter PIN to view this day's notes"
-        onVerified={() => setEntryUnlocked(true)}
+        onVerified={() => {
+          setEntryUnlocked(true);
+          onUnlocked?.();
+        }}
         onCancel={onCancelEntry}
       />
     );
@@ -98,6 +103,7 @@ export function DailyNotesView({ date, onCancelEntry }: DailyNotesViewProps) {
       const saved = await saveDailyNote(date, { eventsText, thoughtsText });
       setExistingNote(saved);
       setEditing(false);
+      onNotesChanged?.();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save note');
     } finally {
@@ -114,6 +120,7 @@ export function DailyNotesView({ date, onCancelEntry }: DailyNotesViewProps) {
       setEventsText('');
       setThoughtsText('');
       setConfirmingDelete(false);
+      onNotesChanged?.();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete note');
     } finally {

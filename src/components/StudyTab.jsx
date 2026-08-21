@@ -193,8 +193,8 @@ export function StudyTab() {
 }
 
 const S = {
-  wrap: { padding: '12px 16px 32px', maxWidth: 720, margin: '0 auto' },
-  header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+  wrap: { padding: '8px 16px 24px', maxWidth: 720, margin: '0 auto' },
+  header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
   headTitle: { color: COLORS.text, fontSize: 18, fontWeight: 700 },
   headBtns: { display: 'flex', gap: 8 },
   headBtn: { background: 'transparent', color: COLORS.text, border: `1px solid ${COLORS.border}`,
@@ -208,10 +208,10 @@ const S = {
     padding: '6px 12px', cursor: 'pointer', fontSize: 12, fontWeight: 600 },
   cancelBtn: { background: 'transparent', color: COLORS.text, border: `1px solid ${COLORS.border}`,
     borderRadius: 8, padding: '6px 12px', cursor: 'pointer', fontSize: 12 },
-  empty: { color: COLORS.muted, fontSize: 13, padding: '12px 4px' },
+  empty: { color: COLORS.muted, fontSize: 13, padding: '8px 4px' },
   list: { display: 'flex', flexDirection: 'column', border: `1px solid ${COLORS.border}`,
     borderRadius: 10, overflow: 'hidden', background: COLORS.card },
-  addRow: { display: 'flex', gap: 6, marginTop: 12 },
+  addRow: { display: 'flex', gap: 6, marginTop: 8 },
   addInput: { flex: 1, background: COLORS.bg, color: COLORS.text, border: `1px solid ${COLORS.border}`,
     borderRadius: 8, padding: '8px 12px', fontSize: 14, outline: 'none' },
   addBtn: { background: COLORS.primary, color: '#fff', border: 0, borderRadius: 8,
