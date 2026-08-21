@@ -172,10 +172,6 @@ export function ConfigTab() {
                 </div>
               )}
 
-              {(r.status === 'proposed' || r.status === 'revising') && (
-                <ReplyBox request={r} onSend={sendReply} />
-              )}
-
               {r.response && (
                 <div style={S.response}><strong>Reply:</strong> {r.response}</div>
               )}
@@ -191,11 +187,7 @@ export function ConfigTab() {
               )}
 
               {(r.status === 'proposed' || r.status === 'revising') && (
-                <div style={S.itemActions}>
-                  <button style={{ ...S.smallBtn, borderColor: TIER_COLOR.trivial, color: TIER_COLOR.trivial }}
-                    onClick={() => approve(r)}>Approve & run</button>
-                  <button style={S.smallBtn} onClick={() => reject(r)}>Reject</button>
-                </div>
+                <ReplyBox request={r} onReply={sendReply} onApprove={approve} onReject={reject} />
               )}
               {r.status === 'open' && (
                 <div style={S.itemActions}>
@@ -226,23 +218,29 @@ export function ConfigTab() {
   )
 }
 
-// Free-text answer to a proposal — "do it but skip part 2", "why not X?".
+// The answer end of a proposal thread: a free-text box plus the three ways a
+// proposal can be answered. Sits at the bottom of the card, below the
+// proposal and any earlier reply, so the card reads top-to-bottom as a
+// conversation and the input is where you'd expect to type — under what
+// you're replying to.
 // Draft state is local so typing doesn't re-render the whole request list on
-// every keystroke; it only reaches the DB on Send.
-function ReplyBox({ request, onSend }) {
+// every keystroke; it only reaches the DB on Reply & run.
+function ReplyBox({ request, onReply, onApprove, onReject }) {
   const [draft, setDraft] = useState('')
   const [busy, setBusy] = useState(false)
 
-  const send = async () => {
+  const run = async (fn) => {
+    setBusy(true)
+    try { await fn() } finally { setBusy(false) }
+  }
+
+  const reply = () => {
     const note = draft.trim()
     if (!note) return
-    setBusy(true)
-    try {
-      await onSend(request, note)
+    return run(async () => {
+      await onReply(request, note)
       setDraft('')
-    } finally {
-      setBusy(false)
-    }
+    })
   }
 
   return (
@@ -250,9 +248,20 @@ function ReplyBox({ request, onSend }) {
       <textarea value={draft} onChange={e => setDraft(e.target.value)} rows={2}
         placeholder={request.user_note ? 'Add another reply…' : 'Reply to this proposal…'}
         style={S.replyInput} />
-      <button onClick={send} disabled={busy || !draft.trim()} style={S.replySend}>
-        {busy ? 'Sending…' : 'Send reply'}
-      </button>
+      <div style={S.itemActions}>
+        <button onClick={reply} disabled={busy || !draft.trim()}
+          style={{ ...S.smallBtn, borderColor: COLORS.primary, color: COLORS.primary,
+            opacity: draft.trim() ? 1 : 0.4 }}>
+          {busy ? 'Sending…' : 'Reply & run'}
+        </button>
+        <button onClick={() => run(() => onApprove(request))} disabled={busy}
+          style={{ ...S.smallBtn, borderColor: TIER_COLOR.trivial, color: TIER_COLOR.trivial }}>
+          Approve &amp; run
+        </button>
+        <button onClick={() => run(() => onReject(request))} disabled={busy} style={S.smallBtn}>
+          Reject
+        </button>
+      </div>
     </div>
   )
 }
@@ -288,9 +297,6 @@ const S = {
   replyInput: { background: COLORS.bg, color: COLORS.text, border: `1px solid ${COLORS.border}`,
     borderRadius: 8, padding: 8, fontSize: 13, outline: 'none', resize: 'vertical',
     fontFamily: 'inherit' },
-  replySend: { alignSelf: 'flex-start', background: 'transparent', color: COLORS.primary,
-    border: `1px solid ${COLORS.primary}`, borderRadius: 8, padding: '4px 12px',
-    cursor: 'pointer', fontSize: 12, fontWeight: 600 },
   errBox: { marginTop: 8, padding: 8, background: '#3a1e1e', borderRadius: 8, fontSize: 13, color: COLORS.danger },
   commitRow: { marginTop: 6, fontSize: 12, fontFamily: 'monospace' },
   itemActions: { display: 'flex', gap: 6, marginTop: 8 },
