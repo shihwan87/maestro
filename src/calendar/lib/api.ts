@@ -285,12 +285,14 @@ export function buildDailyEventsTemplate(instances: EventInstance[]): string {
     const d = new Date(iso);
     return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
   };
+  // Two lines per event: a title/time header, then a bare "-" bullet left
+  // empty for the user to write what actually happened.
   return [...nonHoliday]
     .sort((a, b) => a.instanceStartTs.localeCompare(b.instanceStartTs))
     .map((i) => {
       const ev = i.sourceEvent;
       const when = ev.all_day ? 'all day' : `${fmt(i.instanceStartTs)}–${fmt(i.instanceEndTs)}`;
-      return `- ${when} ${ev.title}`;
+      return `${ev.title} (${when})\n-`;
     })
     .join('\n');
 }

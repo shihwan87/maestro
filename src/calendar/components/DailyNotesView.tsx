@@ -150,20 +150,7 @@ export function DailyNotesView({ date, onCancelEntry, onUnlocked, onNotesChanged
     <div style={{ padding: 16 }}>
       {error && <p style={{ color: COLORS.danger, fontSize: 13, marginBottom: 12 }}>{error}</p>}
 
-      <NoteBox
-        label="Events"
-        value={eventsText}
-        editable={editing}
-        onChange={setEventsText}
-      />
-      <NoteBox
-        label="Thoughts"
-        value={thoughtsText}
-        editable={editing}
-        onChange={setThoughtsText}
-      />
-
-      <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+      <div style={ACTION_BAR_STYLE}>
         {editing ? (
           <>
             <button onClick={handleSave} disabled={saving} style={primaryBtnStyle}>
@@ -205,6 +192,19 @@ export function DailyNotesView({ date, onCancelEntry, onUnlocked, onNotesChanged
           </>
         )}
       </div>
+
+      <NoteBox
+        label="Events"
+        value={eventsText}
+        editable={editing}
+        onChange={setEventsText}
+      />
+      <NoteBox
+        label="Thoughts"
+        value={thoughtsText}
+        editable={editing}
+        onChange={setThoughtsText}
+      />
     </div>
   );
 }
@@ -267,6 +267,20 @@ function NoteBox({
     </div>
   );
 }
+
+// The Edit/Save row sits above both boxes and sticks just under the fixed
+// bars (48px top tab + ~43px calendar sub-tab) so it stays reachable while
+// scrolling a long day's notes instead of sitting off-screen at the bottom.
+const ACTION_BAR_STYLE: React.CSSProperties = {
+  display: 'flex',
+  gap: 8,
+  position: 'sticky',
+  top: 'calc(92px + env(safe-area-inset-top, 0px))',
+  zIndex: 40,
+  background: COLORS.bg,
+  padding: '8px 0',
+  marginBottom: 8,
+};
 
 const primaryBtnStyle: React.CSSProperties = {
   padding: '8px 16px',
