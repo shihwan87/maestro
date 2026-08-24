@@ -294,7 +294,7 @@ export function buildDailyEventsTemplate(instances: EventInstance[]): string {
       const when = ev.all_day ? 'all day' : `${fmt(i.instanceStartTs)}–${fmt(i.instanceEndTs)}`;
       return `${ev.title} (${when})\n-`;
     })
-    .join('\n');
+    .join('\n\n');
 }
 
 export async function fetchDailyNote(date: string): Promise<SchedDailyNote | null> {
