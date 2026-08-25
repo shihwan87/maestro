@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "claude:inbox": "node scripts/claude-inbox.mjs",
     "claude:inbox:fetch": "node scripts/inbox-fetch.mjs",
-    "claude:inbox:update": "node scripts/inbox-update.mjs"
+    "claude:inbox:update": "node scripts/inbox-update.mjs",
+    "claude:watch": "node scripts/inbox-watch.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
