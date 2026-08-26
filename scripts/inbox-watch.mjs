@@ -52,6 +52,7 @@ const CLAUDE_BIN = process.env.CLAUDE_BIN || 'claude'
 const PERM_MODE = process.env.INBOX_WATCH_PERMISSION_MODE || 'bypassPermissions'
 const DRY_RUN = process.env.INBOX_WATCH_DRY_RUN === '1'
 const ACTIONABLE = ['open', 'revising']
+const HEALTHY_AFTER_MS = 30_000   // a link that held this long earns a backoff reset
 
 // The headless run follows the same instructions the cron task uses, so there
 // is exactly one definition of "how an inbox row gets processed".
@@ -189,26 +190,45 @@ async function catchUp(label) {
 // recovering on their own, so a dropped channel is torn down and rebuilt.
 
 let channel = null
+let generation = 0        // every rebuild bumps this; older channels go quiet
 let backoffMs = 1_000
 let reconnectTimer = null
+let connectedAt = 0
 
+// Tearing a channel down fires its own subscribe callback with CLOSED, and a
+// replacement sharing the old topic name makes the client close one of them.
+// Both look exactly like a dropped connection, so without the generation guard
+// and the per-generation topic the first real drop turns into a reconnect loop.
 function connect() {
   clearTimeout(reconnectTimer)
-  if (channel) { try { sb.removeChannel(channel) } catch { /* already gone */ } }
+  const myGen = ++generation
+
+  if (channel) {
+    const stale = channel
+    channel = null
+    try { sb.removeChannel(stale) } catch { /* already gone */ }
+  }
 
   channel = sb
-    .channel('inbox-watch')
+    .channel(`inbox-watch-${myGen}`)
     .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'claude_requests' }, (payload) => {
+      if (myGen !== generation) return
       schedule(`new request ${payload.new?.id ?? '(unknown id)'}`)
     })
     .subscribe((status, err) => {
+      if (myGen !== generation) return   // superseded channel - this is our own teardown
+
       if (status === 'SUBSCRIBED') {
-        backoffMs = 1_000
+        connectedAt = Date.now()
         log('connected - listening for new requests')
         catchUp('on connect')
         return
       }
       if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+        // Only a connection that actually held for a while counts as healthy;
+        // otherwise a flapping link would keep resetting the backoff to 1s.
+        if (connectedAt && Date.now() - connectedAt > HEALTHY_AFTER_MS) backoffMs = 1_000
+        connectedAt = 0
         log(`realtime ${status.toLowerCase()}${err ? `: ${err.message}` : ''} - reconnecting in ${backoffMs / 1000}s`)
         reconnectTimer = setTimeout(connect, backoffMs)
         backoffMs = Math.min(backoffMs * 2, 60_000)
