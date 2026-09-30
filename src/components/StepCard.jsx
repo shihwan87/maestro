@@ -182,19 +182,25 @@ export function StepCard({ step, onUpdate, onDelete, inCalendar, onCalendarChang
 
 const S = {
   wrap: { background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderRadius: 10, overflow: 'hidden' },
-  header: { display: 'flex', alignItems: 'center', gap: 10, padding: 12, flexWrap: 'wrap' },
+  // No wrapping: the row used to break onto a second line on a phone once the
+  // D-day badge and both icon buttons were in it, doubling every step card's
+  // height. The title is the only thing allowed to shrink now.
+  header: { display: 'flex', alignItems: 'center', gap: 6, padding: '8px 10px',
+    flexWrap: 'nowrap' },
   handle: { color: COLORS.muted, fontSize: 14, cursor: 'grab', userSelect: 'none',
     touchAction: 'none', padding: '0 2px' },
   dot: { width: 18, height: 18, borderRadius: 99, border: 0, cursor: 'pointer', flexShrink: 0 },
-  title: { flex: 1, color: COLORS.text, fontSize: 14, fontWeight: 500, cursor: 'pointer',
-    minWidth: 100 },
-  titleInput: { flex: 1, minWidth: 100, background: COLORS.card, color: COLORS.text,
+  title: { flex: '1 1 auto', color: COLORS.text, fontSize: 14, fontWeight: 500,
+    cursor: 'pointer', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap' },
+  titleInput: { flex: '1 1 auto', minWidth: 0, background: COLORS.card, color: COLORS.text,
     border: `1px solid ${COLORS.primary}`, borderRadius: 8, padding: '6px 10px',
     fontSize: 14, fontWeight: 500, outline: 'none', fontFamily: 'inherit' },
   iconBtn: { background: 'transparent', color: COLORS.muted, border: 0, cursor: 'pointer',
-    fontSize: 18, lineHeight: 1, padding: 6, minWidth: 36, minHeight: 36,
+    fontSize: 18, lineHeight: 1, padding: 4, minWidth: 32, minHeight: 32,
     display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-  badge: { fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 999 },
+  badge: { fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 999,
+    flexShrink: 0, whiteSpace: 'nowrap' },
   calMark: { fontSize: 13, lineHeight: 1, flexShrink: 0 },
   body: { padding: 12, borderTop: `1px solid ${COLORS.border}`, display: 'flex',
     flexDirection: 'column', gap: 6 },
