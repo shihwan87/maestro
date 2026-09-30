@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
 import { COLORS } from '../styles/theme'
 import { effectiveDeadline } from '../lib/format'
-import { ARCHIVED } from '../lib/constants'
+import { ARCHIVED, STUDY } from '../lib/constants'
 import { useProjects } from '../hooks/useProjects'
 import { useCategories } from '../hooks/useCategories'
 import { useStepsByProject } from '../hooks/useStepsByProject'
@@ -10,8 +10,12 @@ import { UrgentBanner } from './UrgentBanner'
 import { AddProjectModal } from './AddProjectModal'
 import { ProjectModal } from './ProjectModal'
 import { CategoryManager } from './CategoryManager'
+import { StudyTab } from './StudyTab'
 
-export function Dashboard({ scope = 'work', title = 'Projects', itemNoun = 'Project' }) {
+// showStudy: WORK only. Renders a 'Study' chip alongside the real category
+// chips which swaps the project grid for the Study topic tree. Study is not a
+// categories row — see STUDY in lib/constants.js for why.
+export function Dashboard({ scope = 'work', title = 'Projects', itemNoun = 'Project', showStudy = false }) {
   const { projects, loading, error, addProject, updateProject, deleteProject, refresh } = useProjects(scope)
   const { categories, addCategory, updateCategory, deleteCategory, reorderCategories, colorFor } = useCategories(scope)
   const { stepsByProject } = useStepsByProject()
@@ -58,6 +62,8 @@ export function Dashboard({ scope = 'work', title = 'Projects', itemNoun = 'Proj
     })
   }, [projects, filter, stepsByProject])
 
+  const studyActive = showStudy && filter === STUDY
+
   const nonArchivedCount = useMemo(
     () => projects.filter(p => p.category !== ARCHIVED).length,
     [projects],
@@ -83,18 +89,22 @@ export function Dashboard({ scope = 'work', title = 'Projects', itemNoun = 'Proj
       <header style={S.header}>
         <div>
           <h1 style={S.h1}>{title}</h1>
-          <p style={S.sub}>{nonArchivedCount} total</p>
+          <p style={S.sub}>{studyActive ? 'Study topics' : `${nonArchivedCount} total`}</p>
         </div>
-        <div style={S.headBtns}>
-          <button style={S.catBtn} onClick={() => setCatMgrOpen(true)}>Categories</button>
-          <button style={S.addBtn} onClick={() => { setEditing('new'); setAddOpen(true) }}>
-            + New {itemNoun}
-          </button>
-        </div>
+        {!studyActive && (
+          <div style={S.headBtns}>
+            <button style={S.catBtn} onClick={() => setCatMgrOpen(true)}>Categories</button>
+            <button style={S.addBtn} onClick={() => { setEditing('new'); setAddOpen(true) }}>
+              + New {itemNoun}
+            </button>
+          </div>
+        )}
       </header>
 
-      <UrgentBanner projects={projects.filter(p => p.category !== ARCHIVED)}
-        stepsByProject={stepsByProject} onClick={(p) => setOpened(p)} />
+      {!studyActive && (
+        <UrgentBanner projects={projects.filter(p => p.category !== ARCHIVED)}
+          stepsByProject={stepsByProject} onClick={(p) => setOpened(p)} />
+      )}
 
       <div style={S.filters}>
         <FilterChip label="All" active={filter === 'All'} color={COLORS.text}
@@ -107,22 +117,32 @@ export function Dashboard({ scope = 'work', title = 'Projects', itemNoun = 'Proj
           <FilterChip label={ARCHIVED} active={filter === ARCHIVED}
             color={colorFor(ARCHIVED)} onClick={() => setFilter(ARCHIVED)} />
         )}
+        {showStudy && (
+          <FilterChip label={STUDY} active={studyActive} color={COLORS.primary}
+            onClick={() => setFilter(STUDY)} />
+        )}
       </div>
 
-      {loading && <p style={S.muted}>Loading…</p>}
-      {error && <p style={S.err}>{error.message}</p>}
+      {studyActive ? (
+        <StudyTab />
+      ) : (
+        <>
+          {loading && <p style={S.muted}>Loading…</p>}
+          {error && <p style={S.err}>{error.message}</p>}
 
-      <div style={S.grid}>
-        {visible.map(p => (
-          <ProjectCard key={p.id} project={p}
-            steps={stepsByProject.get(p.id) || []}
-            accent={colorFor(p.category)}
-            onOpen={setOpened} />
-        ))}
-      </div>
+          <div style={S.grid}>
+            {visible.map(p => (
+              <ProjectCard key={p.id} project={p}
+                steps={stepsByProject.get(p.id) || []}
+                accent={colorFor(p.category)}
+                onOpen={setOpened} />
+            ))}
+          </div>
 
-      {!loading && visible.length === 0 && (
-        <p style={S.muted}>No projects.</p>
+          {!loading && visible.length === 0 && (
+            <p style={S.muted}>No projects.</p>
+          )}
+        </>
       )}
 
       <ProjectModal project={opened}

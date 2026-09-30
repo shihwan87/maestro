@@ -30,6 +30,7 @@ import type { DeleteScope, TaskExportResponse, TaskExportSource, SchedEvent } fr
 
 type TaskExportAction =
   | { action: 'status'; stepId: string }
+  | { action: 'statusBatch'; stepIds: string[] }
   | { action: 'migrate'; stepId: string; enabled: boolean; deleteScope?: DeleteScope };
 
 function adminClient() {
@@ -87,6 +88,30 @@ Deno.serve(async (req: Request): Promise<Response> => {
       if (error) throw new Error(error.message);
       const response: TaskExportResponse = { schedEvent: (existing as SchedEvent | null) ?? null };
       return new Response(JSON.stringify(response), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Batch sibling of 'status'. One round trip for a whole project's steps,
+    // so a step list can show "in calendar" marks without N function calls.
+    // Returns only the linked task_ids, not full rows — the caller just needs
+    // a yes/no per step.
+    if (body.action === 'statusBatch') {
+      const ids = Array.isArray(body.stepIds) ? body.stepIds.filter(Boolean) : [];
+      if (ids.length === 0) {
+        return new Response(JSON.stringify({ migratedStepIds: [] }), {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      const { data: linked, error } = await adminClient()
+        .from('sched_events')
+        .select('task_id')
+        .in('task_id', ids);
+      if (error) throw new Error(error.message);
+      const migratedStepIds = [...new Set((linked ?? []).map((r) => r.task_id as string))];
+      return new Response(JSON.stringify({ migratedStepIds }), {
         status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });

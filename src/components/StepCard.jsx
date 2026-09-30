@@ -7,7 +7,10 @@ import { deadlineBadge, formatYYMMDD } from '../lib/format'
 import { DateInput } from './DateInput'
 import { MoveToScheduleButton } from './MoveToScheduleButton'
 
-export function StepCard({ step, onUpdate, onDelete }) {
+// inCalendar / onCalendarChange come from ProjectModal's one-shot batch
+// status fetch; both are undefined when a caller doesn't track it, in which
+// case the calendar mark is hidden and MoveToScheduleButton self-fetches.
+export function StepCard({ step, onUpdate, onDelete, inCalendar, onCalendarChange }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: step.id })
 
@@ -101,6 +104,9 @@ export function StepCard({ step, onUpdate, onDelete }) {
             {badge.text}
           </span>
         )}
+        {inCalendar && (
+          <span style={S.calMark} title="This step has a calendar event">📅</span>
+        )}
         <button onClick={e => { e.stopPropagation(); setEditingTitle(true) }}
           style={S.iconBtn} title="Rename step">✎</button>
         <button onClick={() => setExpanded(v => !v)} style={S.iconBtn} title={expanded ? 'Collapse' : 'Expand'}>
@@ -164,7 +170,8 @@ export function StepCard({ step, onUpdate, onDelete }) {
               style={S.notes} rows={10} placeholder="Enter notes…" />
           )}
 
-          <MoveToScheduleButton step={step} />
+          <MoveToScheduleButton step={step} initialMigrated={inCalendar}
+            onChange={onCalendarChange} />
 
           <button onClick={() => onDelete(step.id)} style={S.delStep}>Delete step</button>
         </div>
@@ -188,6 +195,7 @@ const S = {
     fontSize: 18, lineHeight: 1, padding: 6, minWidth: 36, minHeight: 36,
     display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   badge: { fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 999 },
+  calMark: { fontSize: 13, lineHeight: 1, flexShrink: 0 },
   body: { padding: 12, borderTop: `1px solid ${COLORS.border}`, display: 'flex',
     flexDirection: 'column', gap: 6 },
   fieldRow: { display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' },

@@ -7,18 +7,29 @@ import { getScheduleStatus, setScheduleMigration } from '../lib/scheduleExport'
 // schedule_manager's own local sched_events table first (Design Lock #14) —
 // pushing that local event on to Google is a separate action, done from
 // inside schedule_manager's EventDetail, not from here.
-export function MoveToScheduleButton({ step }) {
-  const [status, setStatus] = useState('loading') // 'loading' | 'not-migrated' | 'migrated'
+// initialMigrated: when the parent already knows this step's calendar state
+// (ProjectModal fetches all of them in one statusBatch call), pass it in and
+// this component skips its own per-step round trip. Undefined means "unknown",
+// and the old single-step fetch runs.
+// onChange: lets the parent update its own mark without a refetch.
+export function MoveToScheduleButton({ step, initialMigrated, onChange }) {
+  const [status, setStatus] = useState(
+    initialMigrated === undefined ? 'loading' : (initialMigrated ? 'migrated' : 'not-migrated'),
+  ) // 'loading' | 'not-migrated' | 'migrated'
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
 
   useEffect(() => {
+    if (initialMigrated !== undefined) {
+      setStatus(initialMigrated ? 'migrated' : 'not-migrated')
+      return
+    }
     let cancelled = false
     getScheduleStatus(step.id)
       .then((schedEvent) => { if (!cancelled) setStatus(schedEvent ? 'migrated' : 'not-migrated') })
       .catch((e) => { if (!cancelled) { setStatus('not-migrated'); setErr(e.message || 'Status check failed') } })
     return () => { cancelled = true }
-  }, [step.id])
+  }, [step.id, initialMigrated])
 
   const toggle = async () => {
     setErr('')
@@ -31,9 +42,11 @@ export function MoveToScheduleButton({ step }) {
       if (status === 'migrated') {
         await setScheduleMigration(step.id, false)
         setStatus('not-migrated')
+        onChange?.(step.id, false)
       } else {
         await setScheduleMigration(step.id, true)
         setStatus('migrated')
+        onChange?.(step.id, true)
       }
     } catch (e) {
       setErr(e.message || 'Failed to update Schedule')

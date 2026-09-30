@@ -2,7 +2,7 @@ import { useState, useEffect, lazy, Suspense } from 'react'
 import { PinGate } from './components/PinGate'
 import { Dashboard } from './components/Dashboard'
 import { ConfigTab } from './components/ConfigTab'
-import { StudyTab } from './components/StudyTab'
+import { OverviewTab } from './components/OverviewTab'
 import { TabBar } from './components/TabBar'
 import { useTabMarkers, markerFor } from './hooks/useTabMarkers'
 import { COLORS } from './styles/theme'
@@ -13,7 +13,9 @@ const TOP_TAB_KEY = 'maestro.topTab'
 const SUB_TAB_KEY = 'maestro.activeTab'
 
 const VALID_TOP_TABS = ['tasks', 'calendar', 'config']
-const VALID_SUB_TABS = ['work', 'personal', 'study']
+// 'study' was a sub-tab until Phase 11; it is now a chip inside WORK. A
+// stored 'study' falls through to the default below rather than 404-ing.
+const VALID_SUB_TABS = ['overview', 'work', 'personal']
 
 export default function App() {
   const [topTab, setTopTab] = useState(() => {
@@ -22,14 +24,20 @@ export default function App() {
   })
   const [subTab, setSubTab] = useState(() => {
     const saved = sessionStorage.getItem(SUB_TAB_KEY)
-    return VALID_SUB_TABS.includes(saved) ? saved : 'work'
+    return VALID_SUB_TABS.includes(saved) ? saved : 'overview'
   })
   const markers = useTabMarkers()
 
   useEffect(() => { sessionStorage.setItem(TOP_TAB_KEY, topTab) }, [topTab])
   useEffect(() => { sessionStorage.setItem(SUB_TAB_KEY, subTab) }, [subTab])
 
+  // OVERVIEW spans both scopes, so its marker is the more urgent of the two.
+  const overviewMin = [markers.work.minDays, markers.personal.minDays]
+    .filter(n => n !== null)
+    .reduce((min, n) => (min === null || n < min ? n : min), null)
+
   const subMarkers = {
+    overview: markerFor(overviewMin),
     work:     markerFor(markers.work.minDays),
     personal: markerFor(markers.personal.minDays),
   }
@@ -45,9 +53,9 @@ export default function App() {
         <div style={{ paddingTop: 'calc(48px + env(safe-area-inset-top, 0px))' }}>
           <TabBar active={subTab} onChange={setSubTab} markers={subMarkers} />
           <div style={{ paddingTop: 60 }}>
-            {subTab === 'work'     && <Dashboard scope="work"     title="Work"     itemNoun="Project" />}
+            {subTab === 'overview' && <OverviewTab />}
+            {subTab === 'work'     && <Dashboard scope="work"     title="Work"     itemNoun="Project" showStudy />}
             {subTab === 'personal' && <Dashboard scope="personal" title="Personal" itemNoun="Item" />}
-            {subTab === 'study'    && <StudyTab />}
           </div>
         </div>
       )}

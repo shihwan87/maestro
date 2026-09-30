@@ -19,6 +19,7 @@ import { createEvent, createOverride, deleteEvent, editFutureEvents, pushEvent, 
 import { CATEGORY_COLOR, COLORS } from '../../styles/theme';
 import { RecurrenceEditor } from './RecurrenceEditor';
 import { ColorPicker } from '../../components/ColorPicker';
+import { createTaskFromEvent, fetchTaskTargets, type TaskTargetProject } from '../lib/taskImport';
 
 export type EventDetailMode = 'closed' | 'view' | 'edit' | 'create';
 
@@ -141,6 +142,10 @@ export function EventDetail({ mode, instance, createDefaults, onClose, onSaved, 
   const [editScope, setEditScope] = useState<'all' | 'this' | 'future'>('all');
   const [showEditScope, setShowEditScope] = useState(false);
   const [showDeleteScope, setShowDeleteScope] = useState(false);
+  // "Create task" flow: null = picker closed, [] = loading/empty, otherwise
+  // the list of projects the new step can be filed under.
+  const [taskTargets, setTaskTargets] = useState<TaskTargetProject[] | null>(null);
+  const [taskNotice, setTaskNotice] = useState<string | null>(null);
 
   useEffect(() => {
     setError(null);
@@ -149,6 +154,8 @@ export function EventDetail({ mode, instance, createDefaults, onClose, onSaved, 
     setEditScope('all');
     setShowEditScope(false);
     setShowDeleteScope(false);
+    setTaskTargets(null);
+    setTaskNotice(null);
     if (mode === 'create' && createDefaults) {
       setForm(formFromDefaults(createDefaults));
     } else if (mode === 'view' && instance) {
@@ -166,6 +173,9 @@ export function EventDetail({ mode, instance, createDefaults, onClose, onSaved, 
   const event = instance?.sourceEvent ?? null;
   const isFreestandingApp = event?.source === 'app' && !event.task_id;
   const isTaskLinkedApp = event?.source === 'app' && !!event.task_id;
+  // A holiday is not something you do, and an already-linked event has its
+  // task. Everything else can become a task.
+  const canCreateTask = !!event && event.source !== 'holiday' && !event.task_id;
   const color = form.colorOverride ?? (event ? CATEGORY_COLOR[event.category] : CATEGORY_COLOR[form.category]);
 
   async function handleSaveCreate() {
@@ -181,6 +191,58 @@ export function EventDetail({ mode, instance, createDefaults, onClose, onSaved, 
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create event');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function openTaskPicker() {
+    setError(null);
+    setTaskNotice(null);
+    setBusy(true);
+    try {
+      setTaskTargets(await fetchTaskTargets());
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load projects');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleCreateTask(projectId: string) {
+    if (!event || !instance) return;
+    setBusy(true);
+    setError(null);
+    try {
+      // Only a non-recurring 'app' event gets the two-way link. Imported
+      // events must not be linked (see createTaskFromEvent), and a recurring
+      // event's task_id would sit on the *master* row, so renaming the step
+      // would rename every occurrence — not what "make a task out of this one
+      // meeting" means.
+      const link = event.source === 'app' && !instance.isRecurring;
+      // instanceStartTs, not event.start_ts: for a recurring event the stored
+      // row's start_ts is the *first* occurrence, so using it would date the
+      // task months before the occurrence the user actually clicked.
+      await createTaskFromEvent(
+        {
+          id: event.id,
+          title: event.title,
+          description: event.description,
+          start_ts: instance.instanceStartTs,
+        },
+        projectId,
+        link,
+      );
+      setTaskTargets(null);
+      setTaskNotice(
+        link
+          ? 'Task created and linked to this event.'
+          : event.source === 'app'
+            ? 'Task created. It is not linked to this event, because the event repeats.'
+            : 'Task created. It is not linked to this event, because this event came from Google Calendar.',
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create task');
     } finally {
       setBusy(false);
     }
@@ -403,6 +465,7 @@ export function EventDetail({ mode, instance, createDefaults, onClose, onSaved, 
               )}
 
               {error && <p style={{ color: COLORS.danger, fontSize: 12 }}>{error}</p>}
+              {taskNotice && <p style={{ color: COLORS.ok, fontSize: 12 }}>{taskNotice}</p>}
 
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 16 }}>
                 {isFreestandingApp && (
@@ -434,12 +497,95 @@ export function EventDetail({ mode, instance, createDefaults, onClose, onSaved, 
                     Delete
                   </button>
                 )}
+                {canCreateTask && (
+                  <button onClick={openTaskPicker} disabled={busy} style={secondaryButtonStyle}>
+                    Create task
+                  </button>
+                )}
                 <button onClick={onClose} style={{ ...secondaryButtonStyle, marginLeft: 'auto' }}>
                   Close
                 </button>
               </div>
             </>
           )
+        )}
+
+        {taskTargets && (
+          /* Fixed, not absolute like the scope pickers above: the project list
+             can be long, and the event-detail modal is only as tall as its
+             content, which would squeeze it to one visible row. */
+          <div style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.4)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 24,
+            boxSizing: 'border-box',
+            zIndex: 10,
+          }}>
+            {/* Header and Cancel stay put; only the project list scrolls, so a
+                long project list can't push the prompt out of view. */}
+            <div style={{
+              background: COLORS.card,
+              border: `1px solid ${COLORS.border}`,
+              borderRadius: 8,
+              padding: 16,
+              width: 300,
+              maxWidth: '100%',
+              maxHeight: '100%',
+              display: 'flex',
+              flexDirection: 'column',
+            }}>
+              <p style={{ fontSize: 14, margin: '0 0 4px', flexShrink: 0 }}>Add this as a task in…</p>
+              <p style={{ fontSize: 12, color: COLORS.muted, margin: '0 0 12px', flexShrink: 0 }}>
+                The task gets this event's title and date.
+              </p>
+              <div style={{ overflowY: 'auto', minHeight: 0, flex: 1 }}>
+              {taskTargets.length === 0 && (
+                <p style={{ fontSize: 13, color: COLORS.muted }}>
+                  No open projects to file it under. Create one in the TASKS tab first.
+                </p>
+              )}
+              {taskTargets.map((proj) => (
+                <button
+                  key={proj.id}
+                  onClick={() => handleCreateTask(proj.id)}
+                  disabled={busy}
+                  style={{
+                    display: 'block',
+                    width: '100%',
+                    padding: '8px 12px',
+                    marginBottom: 6,
+                    background: 'none',
+                    border: `1px solid ${COLORS.border}`,
+                    borderRadius: 4,
+                    color: COLORS.text,
+                    cursor: 'pointer',
+                    fontSize: 13,
+                    textAlign: 'left',
+                  }}
+                >
+                  <span style={{ color: COLORS.muted, fontSize: 11, marginRight: 6 }}>
+                    {proj.scope === 'personal' ? 'P' : 'W'}
+                  </span>
+                  {proj.title}
+                  {proj.category && (
+                    <span style={{ color: COLORS.muted, fontSize: 11 }}> · {proj.category}</span>
+                  )}
+                </button>
+              ))}
+              </div>
+              <button
+                onClick={() => setTaskTargets(null)}
+                disabled={busy}
+                style={{ ...secondaryButtonStyle, width: '100%', marginTop: 8, flexShrink: 0 }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
         )}
 
         {showEditScope && (

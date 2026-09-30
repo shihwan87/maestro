@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect, useCallback } from 'react'
 import {
   DndContext, closestCenter, PointerSensor, TouchSensor,
   useSensor, useSensors
@@ -10,6 +10,7 @@ import { COLORS } from '../styles/theme'
 import { effectiveDeadline, deadlineBadge, formatYYMMDD } from '../lib/format'
 import { useSteps } from '../hooks/useSteps'
 import { StepCard } from './StepCard'
+import { getScheduleStatusBatch } from '../lib/scheduleExport'
 
 // Ordering: undone-with-deadline (soonest first) → undone-no-deadline
 // (existing sort_order) → done (existing sort_order). Done steps are shown
@@ -39,6 +40,11 @@ export function ProjectModal({ project, accent, onClose, onEdit, onDelete }) {
   const [newStep, setNewStep] = useState('')
   const [showFinished, setShowFinished] = useState(false)
   const [confirmDel, setConfirmDel] = useState(false)
+  // Which of these steps already have a calendar event. One batched call per
+  // open (not one per step) — see getScheduleStatusBatch. Stored with the step
+  // id list it was fetched for, so a stale result is discarded by comparison
+  // during render rather than by a synchronous reset inside the effect.
+  const [calState, setCalState] = useState({ key: '', ids: null })
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -48,6 +54,29 @@ export function ProjectModal({ project, accent, onClose, onEdit, onDelete }) {
   const { active: activeSteps, finished: finishedSteps } = useMemo(
     () => splitAndSort(steps), [steps],
   )
+
+  // Key on the id list, not the steps array: step edits (title, notes) must
+  // not re-trigger an edge-function call, only added/removed steps should.
+  const stepIdKey = steps.map(s => s.id).sort().join(',')
+  useEffect(() => {
+    if (!project?.id || !stepIdKey) return
+    let cancelled = false
+    getScheduleStatusBatch(stepIdKey.split(','))
+      .then(ids => { if (!cancelled) setCalState({ key: stepIdKey, ids }) })
+      .catch(() => { if (!cancelled) setCalState({ key: stepIdKey, ids: null }) })
+    return () => { cancelled = true }
+  }, [project?.id, stepIdKey])
+
+  // null until this exact step list has been answered for.
+  const inCalendar = calState.key === stepIdKey ? calState.ids : null
+
+  const onCalendarChange = useCallback((stepId, migrated) => {
+    setCalState(prev => {
+      const next = new Set(prev.ids ?? [])
+      if (migrated) next.add(stepId); else next.delete(stepId)
+      return { ...prev, ids: next }
+    })
+  }, [])
 
   if (!project) return null
 
@@ -97,7 +126,7 @@ export function ProjectModal({ project, accent, onClose, onEdit, onDelete }) {
             </div>
           </div>
           <div style={S.headBtns}>
-            <button onClick={onEdit} style={S.editBtn}>Edit</button>
+            {onEdit && <button onClick={onEdit} style={S.editBtn}>Edit</button>}
             {onDelete && !confirmDel && (
               <button onClick={() => setConfirmDel(true)} style={S.delBtn}>Delete</button>
             )}
@@ -118,7 +147,9 @@ export function ProjectModal({ project, accent, onClose, onEdit, onDelete }) {
             <SortableContext items={activeSteps.map(s => s.id)} strategy={verticalListSortingStrategy}>
               <div style={S.stepList}>
                 {activeSteps.map(s => (
-                  <StepCard key={s.id} step={s} onUpdate={onUpdateStep} onDelete={onDeleteStep} />
+                  <StepCard key={s.id} step={s} onUpdate={onUpdateStep} onDelete={onDeleteStep}
+                    inCalendar={inCalendar ? inCalendar.has(s.id) : undefined}
+                    onCalendarChange={onCalendarChange} />
                 ))}
               </div>
             </SortableContext>
@@ -134,7 +165,9 @@ export function ProjectModal({ project, accent, onClose, onEdit, onDelete }) {
               {showFinished && (
                 <div style={{ ...S.stepList, marginTop: 8 }}>
                   {finishedSteps.map(s => (
-                    <StepCard key={s.id} step={s} onUpdate={onUpdateStep} onDelete={onDeleteStep} />
+                    <StepCard key={s.id} step={s} onUpdate={onUpdateStep} onDelete={onDeleteStep}
+                      inCalendar={inCalendar ? inCalendar.has(s.id) : undefined}
+                      onCalendarChange={onCalendarChange} />
                   ))}
                 </div>
               )}

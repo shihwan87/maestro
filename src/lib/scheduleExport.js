@@ -26,3 +26,15 @@ export async function setScheduleMigration(stepId, enabled, deleteScope) {
   if (error) throw new Error(error.message || 'Failed to update Schedule')
   return data.schedEvent
 }
+
+// Batch sibling of getScheduleStatus: one call answers "which of these steps
+// already have a calendar event". Used by ProjectModal so a list of N steps
+// costs one round trip instead of N.
+export async function getScheduleStatusBatch(stepIds) {
+  if (!stepIds || stepIds.length === 0) return new Set()
+  const { data, error } = await supabase.functions.invoke('task-export', {
+    body: { action: 'statusBatch', stepIds },
+  })
+  if (error) throw new Error(error.message || 'Failed to check Schedule status')
+  return new Set(data?.migratedStepIds ?? [])
+}
