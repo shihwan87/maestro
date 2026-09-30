@@ -7,17 +7,28 @@ body { background: #0a0a14; color: #e6e7ee; font-family: Inter, system-ui, sans-
 .safe-bottom { padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 60px); }
 input, select, button { font-family: inherit; }
 
-/* OVERVIEW rows are one line each. The list is the query container, so every
-   row drops the same parts at the same width instead of each measuring itself.
+/* OVERVIEW rows are one line each: [W/P] D-day step project category, all
+   flush left. Nothing grows -- a trailing spacer eats the slack, so the text
+   stays packed to the left instead of the step stretching and shoving the
+   project and category to the right edge.
+   The list, not the row, is the query container, so every row drops the same
+   parts at the same width and the rows stay visually aligned.
    Priority when space runs out: the W/P tag and the D-day badge never go, the
    step title keeps whatever is left, and the project title then the category
    are dropped outright rather than shrunk to an unreadable ellipsis. */
 .ov-list { container-type: inline-size; container-name: ovlist; }
 .ov-row { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
 .ov-tag, .ov-badge { flex: 0 0 auto; }
-.ov-step { flex: 1 1 auto; min-width: 0; overflow: hidden;
+.ov-step { flex: 0 1 auto; min-width: 0; overflow: hidden;
   text-overflow: ellipsis; white-space: nowrap; }
-.ov-project, .ov-cat { flex: 0 1 auto; min-width: 0; overflow: hidden;
+/* Higher shrink factor than .ov-step: the project title gives up width first,
+   and a long one ellipsises rather than eating the step's room. */
+.ov-project { flex: 0 3 auto; min-width: 3.5em; max-width: 45%; overflow: hidden;
   text-overflow: ellipsis; white-space: nowrap; }
+/* The category never shrinks. It is two to four characters, so a truncated one
+   ("연." for "연구") is noise, not information -- it is shown whole or the
+   container query below hides it outright. */
+.ov-cat { flex: 0 0 auto; white-space: nowrap; }
+.ov-spacer { flex: 1 1 0; min-width: 0; }
 @container ovlist (max-width: 330px) { .ov-cat { display: none; } }
 @container ovlist (max-width: 250px) { .ov-project { display: none; } }

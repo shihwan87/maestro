@@ -77,11 +77,12 @@ export function OverviewTab() {
   )
 }
 
-// One line per row: [W/P] step · project · D-day · category. The exact date is
-// deliberately absent — the D-day badge carries the urgency, and tapping the
-// row opens the project where the real date lives. Which parts survive a
-// narrow screen is decided by the .ov-* container queries in index.css, not
-// here.
+// One line per row, all flush left: [W/P] D-day step project category. The
+// D-day sits second so the dates form a readable column down the left edge
+// instead of drifting with each title's length. The exact date is deliberately
+// absent — the badge carries the urgency, and tapping the row opens the project
+// where the real date lives. Which parts survive a narrow screen is decided by
+// the .ov-* container queries in index.css, not here.
 function OverviewRow({ row, accent, onOpen }) {
   const badge = deadlineBadge(row.date)
   const tag = scopeTag(row.project.scope)
@@ -93,16 +94,21 @@ function OverviewRow({ row, accent, onOpen }) {
         style={{ ...S.tag, borderColor: accent || COLORS.muted, color: accent || COLORS.muted }}>
         {tag}
       </span>
-      <span className="ov-step" style={S.taskTitle}>
-        {row.kind === 'project' ? `${row.title} (no steps yet)` : row.title}
-      </span>
-      <span className="ov-project" style={S.projectTitle}>{row.project.title}</span>
       <span className="ov-badge" style={{ ...S.badge, background: badge.color, color: '#fff' }}>
         {badge.text}
       </span>
+      <span className="ov-step" style={S.taskTitle}>
+        {row.kind === 'project' ? `${row.title} (no steps yet)` : row.title}
+      </span>
+      {/* A 'project' row's step text IS the project title, so repeating it
+          would just squeeze the line for nothing. */}
+      {row.kind !== 'project' && (
+        <span className="ov-project" style={S.projectTitle}>{row.project.title}</span>
+      )}
       <span className="ov-cat" style={{ ...S.cat, color: accent || COLORS.muted }}>
         {row.project.category || 'Uncategorized'}
       </span>
+      <span className="ov-spacer" aria-hidden="true" />
     </button>
   )
 }
