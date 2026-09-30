@@ -26,7 +26,8 @@ export function effectiveDeadline(project, steps) {
 export function deadlineBadge(dateStr) {
   const n = daysUntil(dateStr)
   if (n === null) return { text: 'No deadline', color: COLORS.muted }
-  if (n < 0) return { text: `D+${-n} overdue`, color: COLORS.danger }
+  // 'D+10' already reads as ten days past due — the word was redundant.
+  if (n < 0) return { text: `D+${-n}`, color: COLORS.danger }
   if (n === 0) return { text: 'D-day', color: COLORS.danger }
   if (n <= 7) return { text: `D-${n}`, color: COLORS.danger }
   if (n <= 30) return { text: `D-${n}`, color: COLORS.warn }

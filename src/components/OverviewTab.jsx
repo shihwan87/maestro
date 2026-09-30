@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { COLORS } from '../styles/theme'
-import { deadlineBadge, formatYYMMDD } from '../lib/format'
+import { deadlineBadge } from '../lib/format'
 import { BUCKETS, groupIntoBuckets, scopeTag } from '../lib/overview'
 import { useAllPending } from '../hooks/useAllPending'
 import { useCategories } from '../hooks/useCategories'
@@ -57,7 +57,7 @@ export function OverviewTab() {
               <span style={S.count}>{list.length}</span>
             </button>
             {open && (
-              <div style={S.list}>
+              <div style={S.list} className="ov-list">
                 {list.map(row => (
                   <OverviewRow key={row.id} row={row} accent={colorForRow(row)}
                     onOpen={() => setOpened(row.project)} />
@@ -77,56 +77,57 @@ export function OverviewTab() {
   )
 }
 
+// One line per row: [W/P] step · project · D-day · category. The exact date is
+// deliberately absent — the D-day badge carries the urgency, and tapping the
+// row opens the project where the real date lives. Which parts survive a
+// narrow screen is decided by the .ov-* container queries in index.css, not
+// here.
 function OverviewRow({ row, accent, onOpen }) {
   const badge = deadlineBadge(row.date)
   const tag = scopeTag(row.project.scope)
   return (
-    <button onClick={onOpen} style={{ ...S.row, borderLeftColor: accent || COLORS.muted }}>
-      <div style={S.rowHead}>
-        <span style={{ ...S.tag, borderColor: accent || COLORS.muted, color: accent || COLORS.muted }}>
-          {tag}
-        </span>
-        <span style={S.projectTitle}>{row.project.title}</span>
-        <span style={{ ...S.cat, color: accent || COLORS.muted }}>
-          {row.project.category || 'Uncategorized'}
-        </span>
-      </div>
-      <div style={S.rowBody}>
-        <span style={S.taskTitle}>
-          {row.kind === 'project' ? `${row.title} (no steps yet)` : row.title}
-        </span>
-        <span style={{ ...S.badge, background: badge.color, color: '#fff' }}>{badge.text}</span>
-      </div>
-      {row.date && <div style={S.date}>{formatYYMMDD(row.date)}</div>}
+    <button onClick={onOpen}
+      className="ov-row"
+      style={{ ...S.row, borderLeftColor: accent || COLORS.muted }}>
+      <span className="ov-tag"
+        style={{ ...S.tag, borderColor: accent || COLORS.muted, color: accent || COLORS.muted }}>
+        {tag}
+      </span>
+      <span className="ov-step" style={S.taskTitle}>
+        {row.kind === 'project' ? `${row.title} (no steps yet)` : row.title}
+      </span>
+      <span className="ov-project" style={S.projectTitle}>{row.project.title}</span>
+      <span className="ov-badge" style={{ ...S.badge, background: badge.color, color: '#fff' }}>
+        {badge.text}
+      </span>
+      <span className="ov-cat" style={{ ...S.cat, color: accent || COLORS.muted }}>
+        {row.project.category || 'Uncategorized'}
+      </span>
     </button>
   )
 }
 
 const S = {
   page: { minHeight: '100vh', background: COLORS.bg, color: COLORS.text,
-    paddingLeft: 20, paddingRight: 20, maxWidth: 1200, margin: '0 auto' },
+    paddingLeft: 12, paddingRight: 12, maxWidth: 1200, margin: '0 auto' },
   header: { marginBottom: 20 },
   h1: { fontSize: 22, fontWeight: 700, margin: 0 },
   sub: { color: COLORS.muted, fontSize: 13, margin: '4px 0 0' },
-  section: { marginBottom: 18 },
+  section: { marginBottom: 14 },
   sectionHead: { width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
     background: 'transparent', border: 0, borderBottom: `1px solid ${COLORS.border}`,
     padding: '8px 2px', cursor: 'pointer', fontSize: 12, fontWeight: 700,
     textTransform: 'uppercase', letterSpacing: 0.6 },
   count: { color: COLORS.muted, fontSize: 12, fontWeight: 600 },
-  list: { display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10 },
+  list: { display: 'flex', flexDirection: 'column', gap: 4, marginTop: 6 },
   row: { textAlign: 'left', background: COLORS.card, border: `1px solid ${COLORS.border}`,
-    borderLeft: '10px solid', borderRadius: 12, padding: '10px 14px', cursor: 'pointer',
-    color: COLORS.text, display: 'flex', flexDirection: 'column', gap: 4 },
-  rowHead: { display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 },
+    borderLeft: '6px solid', borderRadius: 8, padding: '6px 10px', cursor: 'pointer',
+    color: COLORS.text },
   tag: { fontSize: 10, fontWeight: 700, border: '1px solid', borderRadius: 4,
-    padding: '0 4px', flexShrink: 0 },
-  projectTitle: { fontSize: 11, fontWeight: 600, color: COLORS.muted,
-    whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
-  cat: { fontSize: 11, fontWeight: 600, marginLeft: 'auto', flexShrink: 0 },
-  rowBody: { display: 'flex', alignItems: 'center', gap: 10 },
-  taskTitle: { flex: 1, fontSize: 15, fontWeight: 600, lineHeight: 1.3 },
-  badge: { fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 999, flexShrink: 0 },
-  date: { fontSize: 11, color: COLORS.muted },
+    padding: '0 4px' },
+  projectTitle: { fontSize: 11, fontWeight: 600, color: COLORS.muted },
+  cat: { fontSize: 11, fontWeight: 600 },
+  taskTitle: { fontSize: 14, fontWeight: 600 },
+  badge: { fontSize: 11, fontWeight: 700, padding: '1px 7px', borderRadius: 999 },
   muted: { color: COLORS.muted, fontSize: 13 },
 }

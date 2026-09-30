@@ -6,3 +6,18 @@ body { background: #0a0a14; color: #e6e7ee; font-family: Inter, system-ui, sans-
 .safe-top { padding-top: env(safe-area-inset-top, 0px); }
 .safe-bottom { padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 60px); }
 input, select, button { font-family: inherit; }
+
+/* OVERVIEW rows are one line each. The list is the query container, so every
+   row drops the same parts at the same width instead of each measuring itself.
+   Priority when space runs out: the W/P tag and the D-day badge never go, the
+   step title keeps whatever is left, and the project title then the category
+   are dropped outright rather than shrunk to an unreadable ellipsis. */
+.ov-list { container-type: inline-size; container-name: ovlist; }
+.ov-row { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+.ov-tag, .ov-badge { flex: 0 0 auto; }
+.ov-step { flex: 1 1 auto; min-width: 0; overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap; }
+.ov-project, .ov-cat { flex: 0 1 auto; min-width: 0; overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap; }
+@container ovlist (max-width: 330px) { .ov-cat { display: none; } }
+@container ovlist (max-width: 250px) { .ov-project { display: none; } }
