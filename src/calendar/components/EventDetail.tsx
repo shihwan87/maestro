@@ -16,7 +16,7 @@
 import { useEffect, useState } from 'react';
 import type { DeleteScope, EventInstance, NewEventInput, SchedEvent } from '../lib/types';
 import { createEvent, createOverride, deleteEvent, editFutureEvents, pushEvent, unpushEvent, updateEvent } from '../lib/api';
-import { CATEGORY_COLOR, COLORS } from '../../styles/theme';
+import { CATEGORY_COLOR, COLORS, UNIFIED_PALETTE, textOnColor } from '../../styles/theme';
 import { RecurrenceEditor } from './RecurrenceEditor';
 import { ColorPicker } from '../../components/ColorPicker';
 import { createTaskFromEvent, fetchTaskTargets, type TaskTargetProject } from '../lib/taskImport';
@@ -708,6 +708,10 @@ export function EventDetail({ mode, instance, createDefaults, onClose, onSaved, 
 // Type "1330" or "13:30" → 1:30 PM. Type "230" → 2:30 AM. Type "9" → 9:00 AM.
 // AM/PM toggle button flips between halves of the day without retyping.
 // Internal format stays "HH:MM" (24h) for form state compatibility.
+// AM and PM get different colors (amber = day, indigo = night) so the half of
+// the day reads at a glance instead of from the two-letter label alone.
+const AMPM_COLOR = { am: UNIFIED_PALETTE[10], pm: UNIFIED_PALETTE[14] }; // amber-500, indigo-500
+
 function TimeInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   const parts = value.split(':');
   const h24 = parseInt(parts[0] ?? '9', 10);
@@ -796,10 +800,10 @@ function TimeInput({ value, onChange }: { value: string; onChange: (v: string) =
         onClick={toggleAMPM}
         style={{
           padding: '6px 8px',
-          background: COLORS.primary,
+          background: isPM ? AMPM_COLOR.pm : AMPM_COLOR.am,
           border: 'none',
           borderRadius: 4,
-          color: '#fff',
+          color: textOnColor(isPM ? AMPM_COLOR.pm : AMPM_COLOR.am),
           cursor: 'pointer',
           fontSize: 12,
           fontWeight: 600,
